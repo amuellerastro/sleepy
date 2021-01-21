@@ -27,8 +27,12 @@ python-numpy
 python-matplotlib
 
 python-branca
+
 python-astropy
+
 python-folium
+
 python-geojsoncontour
+
 python-requests
 
