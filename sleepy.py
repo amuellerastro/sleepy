@@ -16,11 +16,10 @@ import folium
 from folium import plugins
 import geojsoncontour
 import requests
-import json
+#import json
 
 
-
-def generateBaseMap(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
+def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
     base_map = folium.Map(location=location, control_scale=True, zoom_start=zoom_start, tiles=tiles)
     return base_map
 
@@ -138,7 +137,7 @@ plt.show()
 # cartodbpositron
 
 # base_map = folium.Map(location = [coords[1], coords[0]] , zoom_start = zoom_level,  control_scale=True)
-base_map = generateBaseMap(location=[coords[1], coords[0]], zoom_start = zoom_level)
+base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
 
 # Marker of the coordinates provided by user
 label = folium.Popup("User Coordinates Lon: {} Lat: {}".format(round(coords[0],2), round(coords[1],2)))
@@ -309,7 +308,7 @@ geojson = geojsoncontour.contourf_to_geojson(
 
 # Set up the folium plot
 #geomap = folium.Map([df.latitude.mean(), df.longitude.mean()], zoom_start=10, tiles="cartodbpositron")
-geomap = generateBaseMap(location=[coords[1], coords[0]], zoom_start = zoom_level)
+geomap = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
 
 # Plot the contour plot on folium
 folium.GeoJson(
