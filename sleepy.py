@@ -93,8 +93,6 @@ grid_resolution_meter = 100
 cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
 
 
-
-
 grid_resolution = grid_resolution_meter/1000
 
 # define initial zoom level of map
