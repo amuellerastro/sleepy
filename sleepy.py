@@ -43,10 +43,28 @@ def query_overpass(search_box):
     >;
     out skel qt;
     """
-
     response = requests.get(overpass_url,
                             params={'data': overpass_query})
-    return response.json()
+
+    data_overpass = response.json()
+    # with open('data.json', 'w') as f:
+    #    json.dump(data_overpass, f, indent=2)
+
+    coordinates_query = coordinates_from_overpass(data_overpass)
+
+    return coordinates_query
+
+
+def coordinates_from_overpass(data_overpass):
+    # Collect coords into list
+    all_coords = []
+    for element in data_overpass['elements']:
+        if element['type'] == 'node':
+            lon = element['lon']
+            lat = element['lat']
+            all_coords.append((lon, lat))
+
+    return all_coords
 
 
 # coordinates of area of interest
@@ -88,35 +106,8 @@ search_box = [coords[1]-alpha, coords[0]-alpha/lat_corr, coords[1]+alpha, coords
 
 # define query
 
-data_overpass = query_overpass(search_box)
+all_coords = query_overpass(search_box)
 
-
-# for element in data['elements']:
-#    print(element['id'], element['center']['lat'])
-
-# with open('data.json', 'w') as f:
-#    json.dump(data_overpass, f, indent=2)
-
-# count = 0
-# for element in data['elements']:
-#    count += 1
-# print(f"Found {count} points.")
-
-# print(len(data['elements']))
-# print(len(data.keys()))
-
-
-# Collect coords into list
-all_coords = []
-for element in data_overpass['elements']:
-    if element['type'] == 'node':
-        lon = element['lon']
-        lat = element['lat']
-        all_coords.append((lon, lat))
-#  elif 'center' in element:
-#    lon = element['center']['lon']
-#    lat = element['center']['lat']
-#    coords.append((lon, lat))
 
 # Convert coordinates into numpy array
 found_points = np.array(all_coords)
@@ -130,10 +121,6 @@ plt.show()
 
 # display found nodes on map
 
-
-# OpenStreetMap
-# Stamen Terrain
-# cartodbpositron
 
 # base_map = folium.Map(location = [coords[1], coords[0]] , zoom_start = zoom_level,  control_scale=True)
 base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
