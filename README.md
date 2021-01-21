@@ -20,6 +20,8 @@ The final output is a html file called folium_contour_map.html. It shows an inte
 coordinates. A contour plot shows for each location inside the user defined area the approximate distance to roads, 
 paths, tracks, and hunting stands.
 
+![alt text](https://github.com/amuellerastro/blob/master/example.png?raw=true)
+
 
 Dependencies
 ------------
