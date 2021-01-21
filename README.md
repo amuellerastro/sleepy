@@ -1,7 +1,9 @@
 sleepy
 ------
 
-A small script to find isolated places in the forest.
+A small script to find isolated places in the forest. Its query relies on openstreetmap data, which might be incomplete
+or wrong or outdated, especially in the area inside a forest. This is a first approximation only since roads are defined
+by individual nodes which can be separated by many meters.
 
 Author: Andre Mueller
 
