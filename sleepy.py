@@ -67,6 +67,17 @@ def coordinates_from_overpass(data_overpass):
     return all_coords
 
 
+def spherical_dist(pos1, pos2, r=3958.75):
+
+    pos1 = pos1 * np.pi / 180
+    pos2 = pos2 * np.pi / 180
+    cos_lat1 = np.cos(pos1[..., 0])
+    cos_lat2 = np.cos(pos2[..., 0])
+    cos_lat_d = np.cos(pos1[..., 0] - pos2[..., 0])
+    cos_lon_d = np.cos(pos1[..., 1] - pos2[..., 1])
+    return r * np.arccos(cos_lat_d - cos_lat1 * cos_lat2 * (1 - cos_lon_d))
+
+
 # coordinates of area of interest
 coords = [8.266133, 48.443269] #longitude, latitude
 # coords = [15.585038, 78.202115]
@@ -78,6 +89,11 @@ search_radius = 1.5
 
 # resolution of the grid in meter
 grid_resolution_meter = 100
+
+cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
+
+
+
 
 grid_resolution = grid_resolution_meter/1000
 
@@ -104,51 +120,49 @@ lat_corr = (np.cos(np.radians(coords[1])))
 
 search_box = [coords[1]-alpha, coords[0]-alpha/lat_corr, coords[1]+alpha, coords[0]+alpha/lat_corr]
 
-# define query
-
+# query overpass to get coordinates of roads and hunting stands
 all_coords = query_overpass(search_box)
 
-
-# Convert coordinates into numpy array
-found_points = np.array(all_coords)
-plt.figure(figsize=(10, 10))
-plt.plot(found_points[:, 0] * lat_corr, found_points[:, 1], 'o')
-plt.title('Nodes of Roads')
-plt.xlabel('Longitude')
-plt.ylabel('Latitude')
-plt.axis('equal')
-plt.show()
-
-# display found nodes on map
+# simple plot to check output of query
+# # Convert coordinates into numpy array
+# found_points = np.array(all_coords)
+# plt.figure(figsize=(10, 10))
+# plt.plot(found_points[:, 0] * lat_corr, found_points[:, 1], 'o')
+# plt.title('Nodes of Roads')
+# plt.xlabel('Longitude')
+# plt.ylabel('Latitude')
+# plt.axis('equal')
+# plt.show()
 
 
-# base_map = folium.Map(location = [coords[1], coords[0]] , zoom_start = zoom_level,  control_scale=True)
-base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
-
-# Marker of the coordinates provided by user
-label = folium.Popup("User Coordinates Lon: {} Lat: {}".format(round(coords[0],2), round(coords[1],2)))
-folium.CircleMarker(
-    [coords[1], coords[0]],
-    popup=label,
-    radius=5,
-    fill=True,
-    color='red',
-    fill_color='red',
-    fill_opacity=1).add_to(base_map)
-
-for lon, lat in all_coords:
-    #label = folium.Popup('{} ({}): {} - Cluster {}'.format(bor, post, poi, cluster), parse_html=True)
-    folium.CircleMarker(
-        [lat, lon],
-        radius=1,
-        #popup=label,
-        #color='blue',
-        fill=True,
-        fill_color='#3186cc',
-        fill_opacity=0.4,
-        parse_html=False).add_to(base_map)
-
+# map showing result from query and central coordinates
+# base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
+#
+# # Marker of the coordinates provided by user
+# label = folium.Popup("User Coordinates Lon: {} Lat: {}".format(round(coords[0],2), round(coords[1],2)))
+# folium.CircleMarker(
+#     [coords[1], coords[0]],
+#     popup=label,
+#     radius=5,
+#     fill=True,
+#     color='red',
+#     fill_color='red',
+#     fill_opacity=1).add_to(base_map)
+#
+# for lon, lat in all_coords:
+#     #label = folium.Popup('{} ({}): {} - Cluster {}'.format(bor, post, poi, cluster), parse_html=True)
+#     folium.CircleMarker(
+#         [lat, lon],
+#         radius=1,
+#         #popup=label,
+#         #color='blue',
+#         fill=True,
+#         fill_color='#3186cc',
+#         fill_opacity=0.4,
+#         parse_html=False).add_to(base_map)
 # base_map
+
+
 
 # create a 2D array regularly gridded, based on the required resulotion, e.g. 20m
 # at the moment take the center latitude to compute the correction factor
@@ -156,7 +170,6 @@ for lon, lat in all_coords:
 
 # circular segment from grid resolution
 alpha_grid = np.degrees(grid_resolution / R_earth.to(u.km).value)
-#print(alpha_grid)
 
 # add and subtract alpha_grid to give some margin at the edges when creating the grid
 # following computation of X, Y based on
@@ -168,8 +181,6 @@ X,Y = np.mgrid[(search_box[1]-alpha_grid):(search_box[3]+alpha_grid):alpha_grid,
 grid = np.vstack((X.flatten(), Y.flatten())).T
 n_lon, n_lat = X.shape
 
-# print(search_box)
-# print(len(grid))
 
 #plt.figure(figsize=(10,10))
 #plt.plot(grid[:, 0], grid[:, 1], 'o')
@@ -179,35 +190,21 @@ n_lon, n_lat = X.shape
 #plt.axis('equal')
 #plt.show()
 
-for lon, lat in grid:
-    #label = folium.Popup('{} ({}): {} - Cluster {}'.format(bor, post, poi, cluster), parse_html=True)
-    folium.CircleMarker(
-        [lat, lon],
-        radius=1,
-        #popup=label,
-        color='white',
-        fill=True,
-        fill_color='white',
-        fill_opacity=0.4,
-        parse_html=False).add_to(base_map)
-base_map
+# for lon, lat in grid:
+#     folium.CircleMarker(
+#         [lat, lon],
+#         radius=1,
+#         #popup=label,
+#         color='white',
+#         fill=True,
+#         fill_color='white',
+#         fill_opacity=0.4,
+#         parse_html=False).add_to(base_map)
+# base_map
 
 
 # compute distance
-
 # https://stackoverflow.com/questions/19413259/efficient-way-to-calculate-distance-matrix-given-latitude-and-longitude-data-in
-
-def spherical_dist(pos1, pos2, r=3958.75):
-
-    pos1 = pos1 * np.pi / 180
-    pos2 = pos2 * np.pi / 180
-    cos_lat1 = np.cos(pos1[..., 0])
-    cos_lat2 = np.cos(pos2[..., 0])
-    cos_lat_d = np.cos(pos1[..., 0] - pos2[..., 0])
-    cos_lon_d = np.cos(pos1[..., 1] - pos2[..., 1])
-    return r * np.arccos(cos_lat_d - cos_lat1 * cos_lat2 * (1 - cos_lon_d))
-
-
 result = spherical_dist(grid[:,None], np.array(all_coords), r=R_earth.to(u.km).value)
 #print(np.array(all_coords))
 result.sort()
@@ -216,14 +213,9 @@ dist_km = []
 for idx in range(0,len(result)):
     dist_km.append(np.mean(result[idx][0:5]))
 
-#dist_km.sort()
-#plt.figure(figsize=(10,5))
-#plt.plot(dist_km, 'o')
-#plt.show()
 dist_km = np.array(dist_km)
 
 Z = dist_km.reshape(n_lon, n_lat)
-
 Z_meter = Z * 1e3
 
 # color names
@@ -251,8 +243,6 @@ Z_meter = Z * 1e3
 #]
 
 
-cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
-
 # workaround to setup color bar with right colors in folium
 cmap = cm.get_cmap(cmap_name, 30)    # PiYG
 hex_values = []
@@ -279,10 +269,10 @@ cm = branca.colormap.LinearColormap(hex_values, vmin=vmin, vmax=vmax).to_step(le
 #z_mesh = sp.ndimage.filters.gaussian_filter(z_mesh, sigma, mode='constant')
 
 # Create the contour
-plt.figure(figsize=(10,8))
+#plt.figure(figsize=(10,8))
 contourf = plt.contourf(X, Y, Z_meter, levels, cmap=cmap_name, alpha=1, vmin=0,
                         vmax=vmax, linestyles='dashed') #, colors=colors
-plt.colorbar();
+#plt.colorbar();
 
 # Convert matplotlib contourf to geojson
 geojson = geojsoncontour.contourf_to_geojson(
@@ -308,12 +298,6 @@ folium.GeoJson(
     }).add_to(geomap)
 
 
-# def style_function_opa(self):
-#     return {'fillopacity': 0.0}
-
-# folium.GeoJson(geojson,
-#     style_function=style_function_opa).add_to(geomap)
-
 # Add the colormap to the folium map
 cm.caption = 'Distance [meter]'
 geomap.add_child(cm)
@@ -323,4 +307,4 @@ plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geoma
 
 # Plot the data
 geomap.save(f'folium_contour_map.html')
-geomap
+# geomap
