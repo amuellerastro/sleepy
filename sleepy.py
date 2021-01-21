@@ -23,6 +23,32 @@ def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
     base_map = folium.Map(location=location, control_scale=True, zoom_start=zoom_start, tiles=tiles)
     return base_map
 
+
+def query_overpass(search_box):
+    overpass_url = "http://overpass-api.de/api/interpreter"
+    overpass_query = f"""
+    [out:json];
+    (
+      way["highway"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      node["amenity"="hunting_stand"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      way["amenity"="hunting_stand"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      relation["amenity"="hunting_stand"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      node["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      way["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      relation["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+      way["building"="hut"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
+    
+    );
+    out body;
+    >;
+    out skel qt;
+    """
+
+    response = requests.get(overpass_url,
+                            params={'data': overpass_query})
+    return response.json()
+
+
 # coordinates of area of interest
 coords = [8.266133, 48.443269] #longitude, latitude
 # coords = [15.585038, 78.202115]
@@ -60,37 +86,10 @@ lat_corr = (np.cos(np.radians(coords[1])))
 
 search_box = [coords[1]-alpha, coords[0]-alpha/lat_corr, coords[1]+alpha, coords[0]+alpha/lat_corr]
 
-# print(search_box)
-
-
 # define query
 
-overpass_url = "http://overpass-api.de/api/interpreter"
+data_overpass = query_overpass(search_box)
 
-overpass_query = f"""
-[out:json];
-(
-  way["highway"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  node["amenity"="hunting_stand"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  way["amenity"="hunting_stand"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  relation["amenity"="hunting_stand"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  node["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  way["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  relation["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-  way["building"="hut"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-
-);
-out body;
->;
-out skel qt;
-"""
-# out center;
-
-# print(overpass_query)
-
-response = requests.get(overpass_url,
-                        params={'data': overpass_query})
-data_overpass = response.json()
 
 # for element in data['elements']:
 #    print(element['id'], element['center']['lat'])
