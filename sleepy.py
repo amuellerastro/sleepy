@@ -78,6 +78,17 @@ def spherical_dist(pos1, pos2, r=3958.75):
     return r * np.arccos(cos_lat_d - cos_lat1 * cos_lat2 * (1 - cos_lon_d))
 
 
+def get_hex_values(cmap_name, levels):
+    cmap = cm.get_cmap(cmap_name, levels)    # PiYG
+    hex_values = []
+    for i in range(cmap.N):
+        rgba = cmap(i)
+        # rgb2hex accepts rgb or rgba
+        # print(matplotlib.colors.rgb2hex(rgba))
+        hex_values.append(matplotlib.colors.rgb2hex(rgba))
+    return hex_values
+
+
 # coordinates of area of interest
 coords = [8.266133, 48.443269] #longitude, latitude
 # coords = [15.585038, 78.202115]
@@ -89,6 +100,9 @@ search_radius = 1.5
 
 # resolution of the grid in meter
 grid_resolution_meter = 100
+
+vmin = 0
+vmax = 300
 
 cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
 
@@ -237,26 +251,14 @@ Z_meter = Z * 1e3
 #     rgba = cmap(i)
 #     # rgb2hex accepts rgb or rgba
 #     print(matplotlib.colors.rgb2hex(rgba))
-#colors = ['#a50026', '#a70226', '#a90426', '#ab0626', '#ad0826', '#af0926', '#b10b26', '#b30d26', '#b50f26', '#b71126', '#b91326', '#bb1526', '#bd1726', '#be1827', '#c01a27', '#c21c27', '#c41e27', '#c62027', '#c82227', '#ca2427', '#cc2627', '#ce2827', '#d02927', '#d22b27', '#d42d27', '#d62f27', '#d83128', '#d93429', '#da362a', '#db382b', '#dc3b2c', '#dd3d2d', '#de402e', '#e0422f', '#e14430', '#e24731', '#e34933', '#e44c34', '#e54e35', '#e65036', '#e75337', '#e95538', '#ea5739', '#eb5a3a', '#ec5c3b', '#ed5f3c', '#ee613e', '#ef633f', '#f16640', '#f26841', '#f36b42', '#f46d43', '#f47044', '#f57245', '#f57547', '#f57748', '#f67a49', '#f67c4a', '#f67f4b', '#f7814c', '#f7844e', '#f8864f', '#f88950', '#f88c51', '#f98e52', '#f99153', '#f99355', '#fa9656', '#fa9857', '#fa9b58', '#fb9d59', '#fba05b', '#fba35c', '#fca55d', '#fca85e', '#fcaa5f', '#fdad60', '#fdaf62', '#fdb163', '#fdb365', '#fdb567', '#fdb768', '#fdb96a', '#fdbb6c', '#fdbd6d', '#fdbf6f', '#fdc171', '#fdc372', '#fdc574', '#fdc776', '#fec877', '#feca79', '#fecc7b', '#fece7c', '#fed07e', '#fed27f', '#fed481', '#fed683', '#fed884', '#feda86', '#fedc88', '#fede89', '#fee08b', '#fee18d', '#fee28f', '#fee491', '#fee593', '#fee695', '#fee797', '#fee999', '#feea9b', '#feeb9d', '#feec9f', '#feeda1', '#feefa3', '#fff0a6', '#fff1a8', '#fff2aa', '#fff3ac', '#fff5ae', '#fff6b0', '#fff7b2', '#fff8b4', '#fffab6', '#fffbb8', '#fffcba', '#fffdbc', '#fffebe', '#feffbe', '#fdfebc', '#fbfdba', '#fafdb8', '#f8fcb6', '#f7fcb4', '#f5fbb2', '#f4fab0', '#f2faae', '#f1f9ac', '#eff8aa', '#eef8a8', '#ecf7a6', '#ebf7a3', '#e9f6a1', '#e8f59f', '#e6f59d', '#e5f49b', '#e3f399', '#e2f397', '#e0f295', '#dff293', '#ddf191', '#dcf08f', '#daf08d', '#d9ef8b', '#d7ee8a', '#d5ed88', '#d3ec87', '#d1ec86', '#cfeb85', '#cdea83', '#cbe982', '#c9e881', '#c7e77f', '#c5e67e', '#c3e67d', '#c1e57b', '#bfe47a', '#bde379', '#bbe278', '#b9e176', '#b7e075', '#b5df74', '#b3df72', '#b1de71', '#afdd70', '#addc6f', '#abdb6d', '#a9da6c', '#a7d96b', '#a5d86a', '#a2d76a', '#a0d669', '#9dd569', '#9bd469', '#98d368', '#96d268', '#93d168', '#91d068', '#8ecf67', '#8ccd67', '#89cc67', '#87cb67', '#84ca66', '#82c966', '#7fc866', '#7dc765', '#7ac665', '#78c565', '#75c465', '#73c264', '#70c164', '#6ec064', '#6bbf64', '#69be63', '#66bd63', '#63bc62', '#60ba62', '#5db961', '#5ab760', '#57b65f', '#54b45f', '#51b35e', '#4eb15d', '#4bb05c', '#48ae5c', '#45ad5b', '#42ac5a', '#3faa59', '#3ca959', '#39a758', '#36a657', '#33a456', '#30a356', '#2da155', '#2aa054', '#279f53', '#249d53', '#219c52', '#1e9a51', '#1b9950', '#199750', '#18954f', '#17934e', '#16914d', '#15904c', '#148e4b', '#138c4a', '#128a49', '#118848', '#108647', '#0f8446', '#0e8245', '#0d8044', '#0c7f43', '#0b7d42', '#0a7b41', '#097940', '#08773f', '#07753e', '#06733d', '#05713c', '#04703b', '#036e3a', '#026c39', '#016a38', '#006837'
-#]
 
-
-# workaround to setup color bar with right colors in folium
-cmap = cm.get_cmap(cmap_name, 30)    # PiYG
-hex_values = []
-for i in range(cmap.N):
-    rgba = cmap(i)
-    # rgb2hex accepts rgb or rgba
-    # print(matplotlib.colors.rgb2hex(rgba))
-    hex_values.append(matplotlib.colors.rgb2hex(rgba))
-
-
-vmin = 0 #np.min(Z_meter)
-vmax = 300 #np.max(Z_meter)
 #levels = len(colors) # without -1 the display would not be correct
 levels = 30 #np.linspace(0, 1000, 100)
-levels2 = np.linspace(0, np.max(Z_meter), 30)
 
+# workaround to setup color bar with right colors in folium
+hex_values = get_hex_values(cmap_name, levels)
+
+# create color map
 cm = branca.colormap.LinearColormap(hex_values, vmin=vmin, vmax=vmax).to_step(levels)
 
 # x_mesh, y_mesh = np.meshgrid(x_orig, y_orig)
