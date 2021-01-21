@@ -23,7 +23,9 @@ Dependencies
 ------------
 
 python-numpy
+
 python-matplotlib
+
 python-branca
 python-astropy
 python-folium
