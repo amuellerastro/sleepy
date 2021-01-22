@@ -1,8 +1,3 @@
-# To Do:
-# add color bar, check if vmax checks out
-# contour opacity - no solution yet
-# load gpx file and overlay?
-
 # https://towardsdatascience.com/loading-data-from-openstreetmap-with-python-and-the-overpass-api-513882a27fd0
 
 import numpy as np
@@ -16,7 +11,12 @@ import folium
 from folium import plugins
 import geojsoncontour
 import requests
-#import json
+import argparse
+import gpxpy
+import gpxpy.gpx
+
+
+# import json
 
 
 def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
@@ -37,7 +37,7 @@ def query_overpass(search_box):
       way["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
       relation["amenity"="shelter"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
       way["building"="hut"]({search_box[0]}, {search_box[1]}, {search_box[2]}, {search_box[3]});
-    
+
     );
     out body;
     >;
@@ -68,7 +68,6 @@ def coordinates_from_overpass(data_overpass):
 
 
 def spherical_dist(pos1, pos2, r=3958.75):
-
     pos1 = pos1 * np.pi / 180
     pos2 = pos2 * np.pi / 180
     cos_lat1 = np.cos(pos1[..., 0])
@@ -79,7 +78,7 @@ def spherical_dist(pos1, pos2, r=3958.75):
 
 
 def get_hex_values(cmap_name, levels):
-    cmap = cm.get_cmap(cmap_name, levels)    # PiYG
+    cmap = cm.get_cmap(cmap_name, levels)  # PiYG
     hex_values = []
     for i in range(cmap.N):
         rgba = cmap(i)
@@ -89,25 +88,55 @@ def get_hex_values(cmap_name, levels):
     return hex_values
 
 
+def add_gpx_track(gpx):
+    gpx_file = open(gpx, 'r')
+
+    gpx = gpxpy.parse(gpx_file)
+    points = []
+    for track in gpx.tracks:
+        for segment in track.segments:
+            for point in segment.points:
+                points.append([point.latitude, point.longitude])
+
+    return points
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-lon', default=8.266133)
+parser.add_argument('-lat', default=48.443269)
+parser.add_argument('-radius_km', default=0.8)
+parser.add_argument('-res_m', default=100)
+parser.add_argument('-cmap', default='gist_gray')
+parser.add_argument('-min_dist', default=300)
+parser.add_argument('-gpx', default=False)
+
+args = parser.parse_args()
+coords = [float(args.lon), float(args.lat)]
+search_radius = float(args.radius_km)
+grid_resolution_meter = float(args.res_m)
+cmap_name = str(args.cmap)
+vmax = float(args.min_dist)
+gpx = args.gpx
+
 # coordinates of area of interest
-coords = [8.266133, 48.443269] #longitude, latitude
+# coords = [8.266133, 48.443269] #longitude, latitude
 # coords = [15.585038, 78.202115]
 # coords = [12.118435, 50.529979]
 # coords = [-38, 69]
 
 # search radius in km
-search_radius = 1.5
+# search_radius = 1.5
 
 # resolution of the grid in meter
-grid_resolution_meter = 100
+# grid_resolution_meter = 100
+
+# color map
+# cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
 
 vmin = 0
-vmax = 300
+# vmax = 300
 
-cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
-
-
-grid_resolution = grid_resolution_meter/1000
+grid_resolution = grid_resolution_meter / 1000
 
 # define initial zoom level of map
 
@@ -122,15 +151,13 @@ elif search_radius > 2.5 and search_radius <= 5:
 else:
     zoom_level = 11
 
-# define search box based on inputs and correct for latitude
-
 # circular segment
 alpha = np.degrees(search_radius / R_earth.to(u.km).value)
 
 # correction for geographical latitude
 lat_corr = (np.cos(np.radians(coords[1])))
 
-search_box = [coords[1]-alpha, coords[0]-alpha/lat_corr, coords[1]+alpha, coords[0]+alpha/lat_corr]
+search_box = [coords[1] - alpha, coords[0] - alpha / lat_corr, coords[1] + alpha, coords[0] + alpha / lat_corr]
 
 # query overpass to get coordinates of roads and hunting stands
 all_coords = query_overpass(search_box)
@@ -175,7 +202,6 @@ all_coords = query_overpass(search_box)
 # base_map
 
 
-
 # create a 2D array regularly gridded, based on the required resulotion, e.g. 20m
 # at the moment take the center latitude to compute the correction factor
 # for longitude because the dimension of the search box are small
@@ -188,19 +214,18 @@ alpha_grid = np.degrees(grid_resolution / R_earth.to(u.km).value)
 # https://stackoverflow.com/questions/32208359/is-there-a-multi-dimensional-version-of-arange-linspace-in-numpy
 # grid = np.mgrid[search_box[1]-alpha_grid:search_box[3]+alpha_grid:alpha_grid,
 #                 search_box[0]-alpha_grid:search_box[2]+alpha_grid:alpha_grid].reshape(2,-1).T
-X,Y = np.mgrid[(search_box[1]-alpha_grid):(search_box[3]+alpha_grid):alpha_grid,
-               search_box[0]-alpha_grid:search_box[2]+alpha_grid:alpha_grid]
+X, Y = np.mgrid[(search_box[1] - alpha_grid):(search_box[3] + alpha_grid):alpha_grid,
+       search_box[0] - alpha_grid:search_box[2] + alpha_grid:alpha_grid]
 grid = np.vstack((X.flatten(), Y.flatten())).T
 n_lon, n_lat = X.shape
 
-
-#plt.figure(figsize=(10,10))
-#plt.plot(grid[:, 0], grid[:, 1], 'o')
-#plt.title('Grid')
-#plt.xlabel('Longitude')
-#plt.ylabel('Latitude')
-#plt.axis('equal')
-#plt.show()
+# plt.figure(figsize=(10,10))
+# plt.plot(grid[:, 0], grid[:, 1], 'o')
+# plt.title('Grid')
+# plt.xlabel('Longitude')
+# plt.ylabel('Latitude')
+# plt.axis('equal')
+# plt.show()
 
 # for lon, lat in grid:
 #     folium.CircleMarker(
@@ -217,12 +242,12 @@ n_lon, n_lat = X.shape
 
 # compute distance
 # https://stackoverflow.com/questions/19413259/efficient-way-to-calculate-distance-matrix-given-latitude-and-longitude-data-in
-result = spherical_dist(grid[:,None], np.array(all_coords), r=R_earth.to(u.km).value)
-#print(np.array(all_coords))
+result = spherical_dist(grid[:, None], np.array(all_coords), r=R_earth.to(u.km).value)
+# print(np.array(all_coords))
 result.sort()
 
 dist_km = []
-for idx in range(0,len(result)):
+for idx in range(0, len(result)):
     dist_km.append(np.mean(result[idx][0:5]))
 
 dist_km = np.array(dist_km)
@@ -252,8 +277,8 @@ Z_meter = Z * 1e3
 #     # rgb2hex accepts rgb or rgba
 #     print(matplotlib.colors.rgb2hex(rgba))
 
-#levels = len(colors) # without -1 the display would not be correct
-levels = 30 #np.linspace(0, 1000, 100)
+# levels = len(colors) # without -1 the display would not be correct
+levels = 30  # np.linspace(0, 1000, 100)
 
 # workaround to setup color bar with right colors in folium
 hex_values = get_hex_values(cmap_name, levels)
@@ -265,38 +290,37 @@ cm = branca.colormap.LinearColormap(hex_values, vmin=vmin, vmax=vmax).to_step(le
 # z_mesh = griddata((x_orig, y_orig), z_orig, (x_mesh, y_mesh), method='linear')
 
 # Gaussian filter the grid to make it smoother
-#sigma = [2, 2]
-#z_mesh = sp.ndimage.filters.gaussian_filter(z_mesh, sigma, mode='constant')
+# sigma = [2, 2]
+# z_mesh = sp.ndimage.filters.gaussian_filter(z_mesh, sigma, mode='constant')
 
 # Create the contour
-#plt.figure(figsize=(10,8))
+# plt.figure(figsize=(10,8))
 contourf = plt.contourf(X, Y, Z_meter, levels, cmap=cmap_name, alpha=1, vmin=0,
-                        vmax=vmax, linestyles='dashed') #, colors=colors
-#plt.colorbar();
+                        vmax=vmax, linestyles='dashed')  # , colors=colors
+# plt.colorbar();
 
 # Convert matplotlib contourf to geojson
 geojson = geojsoncontour.contourf_to_geojson(
     contourf=contourf,
-    #min_angle_deg=3.0,
-    #ndigits=5,
+    # min_angle_deg=3.0,
+    # ndigits=5,
     stroke_width=0)
-    #fill_opacity=0.1)
+# fill_opacity=0.1)
 
 # Set up the folium plot
-#geomap = folium.Map([df.latitude.mean(), df.longitude.mean()], zoom_start=10, tiles="cartodbpositron")
-geomap = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
+# geomap = folium.Map([df.latitude.mean(), df.longitude.mean()], zoom_start=10, tiles="cartodbpositron")
+geomap = generate_base_map(location=[coords[1], coords[0]], zoom_start=zoom_level)
 
 # Plot the contour plot on folium
 folium.GeoJson(
     geojson,
     style_function=lambda x: {
-        #'color': x['properties']['stroke'],
+        # 'color': x['properties']['stroke'],
         'weight': x['properties']['stroke-width'],
         'fillColor': x['properties']['fill'],
-        'opacity': 0.5,  #does not work
+        'opacity': 0.5,  # does not work
         'weight': 0.4
     }).add_to(geomap)
-
 
 # Add the colormap to the folium map
 cm.caption = 'Distance [meter]'
@@ -305,6 +329,21 @@ geomap.add_child(cm)
 # Fullscreen mode
 plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap)
 
+# load GPX file
+if gpx:
+    gpx_coords = add_gpx_track(gpx)
+    for gpx_coord in gpx_coords:
+        folium.CircleMarker(gpx_coord,
+                            radius=1,
+                            color='blue',
+                            fill_color='blue',
+                            fill=True,
+                            parse_html=False).add_to(geomap)
+
 # Plot the data
-geomap.save(f'folium_contour_map.html')
+# geomap.save(f'folium_contour_map_lon{}_lat{1}_radius{2}_res{3}_dist{4}.html'.format(np.round(coords[0],5), np.round(coords[1],5), np.round(search_radius, 3), np.round(grid_resolution_meter, 3), np.round(vmax, 3)))
+geomap.save(
+    f'folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}'
+    f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}'
+    f'_dist{np.round(vmax, 3)}.html')
 # geomap
