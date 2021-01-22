@@ -232,14 +232,6 @@ X, Y = np.mgrid[(search_box[1] - alpha_grid):(search_box[3] + alpha_grid):alpha_
 grid = np.vstack((X.flatten(), Y.flatten())).T
 n_lon, n_lat = X.shape
 
-# plt.figure(figsize=(10,10))
-# plt.plot(grid[:, 0], grid[:, 1], 'o')
-# plt.title('Grid')
-# plt.xlabel('Longitude')
-# plt.ylabel('Latitude')
-# plt.axis('equal')
-# plt.show()
-
 # for lon, lat in grid:
 #     folium.CircleMarker(
 #         [lat, lon],
@@ -251,7 +243,6 @@ n_lon, n_lat = X.shape
 #         fill_opacity=0.4,
 #         parse_html=False).add_to(base_map)
 # base_map
-
 
 # compute distance
 # https://stackoverflow.com/questions/19413259/efficient-way-to-calculate-distance-matrix-given-latitude-and-longitude-data-in
