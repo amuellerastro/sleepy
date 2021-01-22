@@ -140,7 +140,7 @@ parser.add_argument('-lon', default=8.266133)
 parser.add_argument('-lat', default=48.443269)
 parser.add_argument('-radius_km', default=0.8)
 parser.add_argument('-res_m', default=100)
-parser.add_argument('-cmap', default='gist_gray')
+parser.add_argument('-cmap', default='seismic')
 parser.add_argument('-min_dist', default=300)
 parser.add_argument('-gpx', default=False)
 
