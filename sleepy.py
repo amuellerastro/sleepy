@@ -321,7 +321,6 @@ if gpx:
     geomap = add_gpx_track(gpx, geomap)
 
 # Plot the data
-# geomap.save(f'folium_contour_map_lon{}_lat{1}_radius{2}_res{3}_dist{4}.html'.format(np.round(coords[0],5), np.round(coords[1],5), np.round(search_radius, 3), np.round(grid_resolution_meter, 3), np.round(vmax, 3)))
 geomap.save(
     f'folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}'
     f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}'
