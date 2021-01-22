@@ -15,6 +15,7 @@ import argparse
 import gpxpy
 import gpxpy.gpx
 
+
 def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
     base_map = folium.Map(location=location, control_scale=True, zoom_start=zoom_start, tiles=tiles)
     return base_map
