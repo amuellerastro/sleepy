@@ -15,10 +15,6 @@ import argparse
 import gpxpy
 import gpxpy.gpx
 
-
-# import json
-
-
 def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
     base_map = folium.Map(location=location, control_scale=True, zoom_start=zoom_start, tiles=tiles)
     return base_map
@@ -199,21 +195,8 @@ search_box = [coords[1] - alpha, coords[0] - alpha / lat_corr, coords[1] + alpha
 # query overpass to get coordinates of roads and hunting stands
 all_coords = query_overpass(search_box)
 
-# simple plot to check output of query
-# # Convert coordinates into numpy array
-# found_points = np.array(all_coords)
-# plt.figure(figsize=(10, 10))
-# plt.plot(found_points[:, 0] * lat_corr, found_points[:, 1], 'o')
-# plt.title('Nodes of Roads')
-# plt.xlabel('Longitude')
-# plt.ylabel('Latitude')
-# plt.axis('equal')
-# plt.show()
-
-
 # map showing result from query and central coordinates
 generate_tmp_map(coords, all_coords, zoom_level)
-
 
 # create a 2D array regularly gridded, based on the required resulotion, e.g. 20m
 # at the moment take the center latitude to compute the correction factor
