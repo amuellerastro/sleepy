@@ -88,7 +88,7 @@ def get_hex_values(cmap_name, levels):
     return hex_values
 
 
-def add_gpx_track(gpx):
+def add_gpx_track(gpx, geomap):
     gpx_file = open(gpx, 'r')
 
     gpx = gpxpy.parse(gpx_file)
@@ -98,7 +98,44 @@ def add_gpx_track(gpx):
             for point in segment.points:
                 points.append([point.latitude, point.longitude])
 
-    return points
+    for gpx_coord in points:
+        folium.CircleMarker(gpx_coord,
+                            radius=1,
+                            color='blue',
+                            fill_color='blue',
+                            fill=True,
+                            parse_html=False).add_to(geomap)
+
+    return geomap
+
+
+def generate_tmp_map(coords, all_coords, zoom_level):
+    base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
+    # Marker of the coordinates provided by user
+    label = folium.Popup("User Coordinates Lon: {} Lat: {}".format(round(coords[0],2), round(coords[1],2)))
+    folium.CircleMarker(
+        [coords[1], coords[0]],
+        popup=label,
+        radius=5,
+        fill=True,
+        color='red',
+        fill_color='red',
+        fill_opacity=1).add_to(base_map)
+
+    for lon, lat in all_coords:
+        #label = folium.Popup('{} ({}): {} - Cluster {}'.format(bor, post, poi, cluster), parse_html=True)
+        folium.CircleMarker(
+            [lat, lon],
+            radius=1,
+            #popup=label,
+            #color='blue',
+            fill=True,
+            fill_color='#3186cc',
+            fill_opacity=0.4,
+            parse_html=False).add_to(base_map)
+
+    base_map.save('tmp.html')
+
 
 
 parser = argparse.ArgumentParser()
@@ -175,31 +212,7 @@ all_coords = query_overpass(search_box)
 
 
 # map showing result from query and central coordinates
-# base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
-#
-# # Marker of the coordinates provided by user
-# label = folium.Popup("User Coordinates Lon: {} Lat: {}".format(round(coords[0],2), round(coords[1],2)))
-# folium.CircleMarker(
-#     [coords[1], coords[0]],
-#     popup=label,
-#     radius=5,
-#     fill=True,
-#     color='red',
-#     fill_color='red',
-#     fill_opacity=1).add_to(base_map)
-#
-# for lon, lat in all_coords:
-#     #label = folium.Popup('{} ({}): {} - Cluster {}'.format(bor, post, poi, cluster), parse_html=True)
-#     folium.CircleMarker(
-#         [lat, lon],
-#         radius=1,
-#         #popup=label,
-#         #color='blue',
-#         fill=True,
-#         fill_color='#3186cc',
-#         fill_opacity=0.4,
-#         parse_html=False).add_to(base_map)
-# base_map
+generate_tmp_map(coords, all_coords, zoom_level)
 
 
 # create a 2D array regularly gridded, based on the required resulotion, e.g. 20m
@@ -331,14 +344,7 @@ plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geoma
 
 # load GPX file
 if gpx:
-    gpx_coords = add_gpx_track(gpx)
-    for gpx_coord in gpx_coords:
-        folium.CircleMarker(gpx_coord,
-                            radius=1,
-                            color='blue',
-                            fill_color='blue',
-                            fill=True,
-                            parse_html=False).add_to(geomap)
+    geomap = add_gpx_track(gpx, geomap)
 
 # Plot the data
 # geomap.save(f'folium_contour_map_lon{}_lat{1}_radius{2}_res{3}_dist{4}.html'.format(np.round(coords[0],5), np.round(coords[1],5), np.round(search_radius, 3), np.round(grid_resolution_meter, 3), np.round(vmax, 3)))
