@@ -121,7 +121,7 @@ def add_googlemaps(nplaces, geomap, X, Y, Z_meter):
         folium.Marker(
             [Y_1d[idxs[idx]], X_1d[idxs[idx]]],
             popup=popup).add_to(geomap)
-    return geomp
+    return geomap
 
 
 def generate_tmp_map(coords, all_coords, zoom_level):
