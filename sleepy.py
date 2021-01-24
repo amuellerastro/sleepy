@@ -120,9 +120,9 @@ def add_googlemaps(nplaces, geomap, X, Y, Z_meter):
 
         tmp_dist = str(round(Z_1d[idxs[idx]]))
         tmp_dist_str = f'Dist. {tmp_dist} m'
-        label = folium.Html(tmp_dist_str+'    '+'<a href="' + url + '"target="_blank">' + link_text + '</a>' +'    '+
+        label = folium.Html(tmp_dist_str+' / '+'<a href="' + url + '"target="_blank">' + link_text + '</a>' +' / '+
                             '<a href="' + url_topo + '"target="_blank">' + link_text_topo + '</a>', script=True)
-        popup = folium.Popup(label, max_width=450, parse_html=True)
+        popup = folium.Popup(label, max_width=500, parse_html=True)
         folium.Marker(
             [Y_1d[idxs[idx]], X_1d[idxs[idx]]],
             popup=popup).add_to(geomap)
