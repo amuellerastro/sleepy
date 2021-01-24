@@ -149,14 +149,11 @@ def generate_tmp_map(coords, all_coords, zoom_level, fout_name):
             fill_opacity=0.4,
             parse_html=False).add_to(base_map)
 
-    base_map.save(f'folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}'
-    f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}'
-    f'_dist{np.round(vmax, 3)}.html')
-
     base_map.save(fout_name)
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-area_name', default='')
 parser.add_argument('-lon', default=8.266133)
 parser.add_argument('-lat', default=48.443269)
 parser.add_argument('-radius_km', default=0.8)
@@ -167,6 +164,7 @@ parser.add_argument('-gpx', default=False)
 parser.add_argument('-nplaces', default=0)
 
 args = parser.parse_args()
+area_name = str(args.area_name)
 coords = [float(args.lon), float(args.lat)]
 search_radius = float(args.radius_km)
 grid_resolution_meter = float(args.res_m)
@@ -220,9 +218,13 @@ search_box = [coords[1] - alpha, coords[0] - alpha / lat_corr, coords[1] + alpha
 all_coords = query_overpass(search_box)
 
 # map showing result from query and central coordinates
-fout_name = f'tmp_folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
-            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
-generate_tmp_map(coords, all_coords, zoom_level, fout_name)
+if area_name:
+    fout_name_tmp = f'{area_name}_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}_tmp.html'
+else:
+    fout_name_tmp = f'map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+    f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}_tmp.html'
+generate_tmp_map(coords, all_coords, zoom_level, fout_name_tmp)
 
 # create a 2D array regularly gridded, based on the required resulotion, e.g. 20m
 # at the moment take the center latitude to compute the correction factor
@@ -351,9 +353,12 @@ if nplaces > 0:
 if gpx:
     geomap = add_gpx_track(gpx, geomap)
 
-# Plot the data
-geomap.save(
-    f'folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}'
-    f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}'
-    f'_dist{np.round(vmax, 3)}.html')
+# Save the map
+if area_name:
+    fout_name = f'{area_name}_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
+else:
+    fout_name  = f'map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+    f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
+geomap.save(fout_name)
 # geomap
