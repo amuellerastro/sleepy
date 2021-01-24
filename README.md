@@ -52,7 +52,6 @@ Dependencies
    1. python-numpy
    1. python-matplotlib
    1. python-branca
-   1. python-astropy
    1. python-folium
    1. python-geojsoncontour
    1. python-requests

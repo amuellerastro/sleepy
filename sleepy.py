@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import branca
 from astropy import units as u
-from astropy.constants import R_earth, c
+from astropy.constants import R_earth
 import folium
 from folium import plugins
 import geojsoncontour
@@ -190,7 +190,8 @@ else:
     zoom_level = 11
 
 # circular segment
-alpha = np.degrees(search_radius / R_earth.to(u.km).value)
+R_earth = 6378.1  #R_earth.to(u.km).value from astropy.constants
+alpha = np.degrees(search_radius / R_earth)
 
 # correction for geographical latitude
 lat_corr = (np.cos(np.radians(coords[1])))
@@ -214,7 +215,7 @@ generate_tmp_map(coords, all_coords, zoom_level, fout_name_tmp)
 # for longitude because the dimension of the search box are small
 
 # circular segment from grid resolution
-alpha_grid = np.degrees(grid_resolution / R_earth.to(u.km).value)
+alpha_grid = np.degrees(grid_resolution / R_earth)
 
 # add and subtract alpha_grid to give some margin at the edges when creating the grid
 # following computation of X, Y based on
@@ -240,7 +241,7 @@ n_lon, n_lat = X.shape
 
 # compute distance
 # https://stackoverflow.com/questions/19413259/efficient-way-to-calculate-distance-matrix-given-latitude-and-longitude-data-in
-result = spherical_dist(grid[:, None], np.array(all_coords), r=R_earth.to(u.km).value)
+result = spherical_dist(grid[:, None], np.array(all_coords), r=R_earth)
 # print(np.array(all_coords))
 result.sort()
 
