@@ -20,17 +20,17 @@ python sleepy.py -lon <deg> -lat <deg>
 
 The available options are:
 
-    -area_name     Name of the area. Has no influence on the provided coordinates. This paramter is just added to the 
-                    file name of the output files.
+    -area_name     Name of the area. Has no influence on the provided coordinates. 
+                    This paramter is just added to the file name of the output files.
     -radius_km     Search radius around the provided coordinates in kilometer (default=0.8).
     -res_m         The spatial resolution of the search grid in meter (default=100).
     -cmap          The name of the color map used to plot the contour map (default='gist_gray')
-    -min_dist      The minimum distance from buildings, roads, hunting stands to be considered acceptable in meter 
-                    (default=300).
+    -min_dist      The minimum distance from buildings, roads, hunting stands to be considered 
+                    acceptable in meter (default=300).
     -gpx           Load a .gpx file. Track will be overplotted. Default: no gpx file is loaded.
-    -nplaces       If >0 then n markers at position of largest distance are placed with popus containing a link to 
-                    google maps satellite images. The zoom level is identical to the original folium map zoom level.
-                    Default=0.
+    -nplaces       If >0 then n markers at position of largest distance are placed with popus 
+                    containing a link to google maps satellite images. The zoom level is 
+                    identical to the original folium map zoom level. Default=0.
 
 
 Output
