@@ -173,23 +173,6 @@ vmax = float(args.min_dist)
 gpx = args.gpx
 nplaces = int(args.nplaces)
 
-# coordinates of area of interest
-# coords = [8.266133, 48.443269] #longitude, latitude
-# coords = [15.585038, 78.202115]
-# coords = [12.118435, 50.529979]
-# coords = [-38, 69]
-
-# search radius in km
-# search_radius = 1.5
-
-# resolution of the grid in meter
-# grid_resolution_meter = 100
-
-# color map
-# cmap_name = 'gist_gray' #'seismic' 'RdYlGn'
-
-vmin = 0
-# vmax = 300
 
 grid_resolution = grid_resolution_meter / 1000
 
@@ -299,7 +282,7 @@ levels = 30  # np.linspace(0, 1000, 100)
 hex_values = get_hex_values(cmap_name, levels)
 
 # create color map
-cm = branca.colormap.LinearColormap(hex_values, vmin=vmin, vmax=vmax).to_step(levels)
+cm = branca.colormap.LinearColormap(hex_values, vmin=0, vmax=vmax).to_step(levels)
 
 # x_mesh, y_mesh = np.meshgrid(x_orig, y_orig)
 # z_mesh = griddata((x_orig, y_orig), z_orig, (x_mesh, y_mesh), method='linear')
@@ -353,12 +336,12 @@ if nplaces > 0:
 if gpx:
     geomap = add_gpx_track(gpx, geomap)
 
-# Save the map
-if area_name:
-    fout_name = f'{area_name}_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
-            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
-else:
+if not area_name:
     fout_name  = f'map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
     f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
+# Save the map
+else:
+    fout_name = f'{area_name}_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
 geomap.save(fout_name)
 # geomap
