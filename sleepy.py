@@ -106,6 +106,24 @@ def add_gpx_track(gpx, geomap):
     return geomap
 
 
+def add_googlemaps(nplaces, geomap, X, Y, Z_meter):
+    X_1d = X.flatten()
+    Y_1d = Y.flatten()
+    Z_1d = Z_meter.flatten()
+    idxs = sorted(range(len(Z_1d)), key=lambda k: Z_1d[k], reverse=True)
+
+    for idx in range(0,nplaces):
+        url = "https://www.google.com/maps/@"+str(Y_1d[idxs[idx]])+","+str(X_1d[idxs[idx]])+","+str(zoom_level)+"z/data=!3m1!1e3"
+        link_text = "Google Maps"
+        tmp_dist = round(Z_1d[idxs[idx]])
+        label = folium.Html('<a href="' + url + '"target="_blank">' + link_text + '</a>', script=True)
+        popup = folium.Popup(label, parse_html=True)
+        folium.Marker(
+            [Y_1d[idxs[idx]], X_1d[idxs[idx]]],
+            popup=popup).add_to(geomap)
+    return geomp
+
+
 def generate_tmp_map(coords, all_coords, zoom_level):
     base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
     # Marker of the coordinates provided by user
@@ -143,6 +161,7 @@ parser.add_argument('-res_m', default=100)
 parser.add_argument('-cmap', default='seismic')
 parser.add_argument('-min_dist', default=300)
 parser.add_argument('-gpx', default=False)
+parser.add_argument('-nplaces', default=0)
 
 args = parser.parse_args()
 coords = [float(args.lon), float(args.lat)]
@@ -151,6 +170,7 @@ grid_resolution_meter = float(args.res_m)
 cmap_name = str(args.cmap)
 vmax = float(args.min_dist)
 gpx = args.gpx
+nplaces = int(args.nplaces)
 
 # coordinates of area of interest
 # coords = [8.266133, 48.443269] #longitude, latitude
@@ -243,7 +263,7 @@ dist_km = np.array(dist_km)
 Z = dist_km.reshape(n_lon, n_lat)
 Z_meter = Z * 1e3
 
-# color names
+#color names
 # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
 
 # color maps
@@ -287,6 +307,7 @@ contourf = plt.contourf(X, Y, Z_meter, levels, cmap=cmap_name, alpha=1, vmin=0,
                         vmax=vmax, linestyles='dashed')  # , colors=colors
 # plt.colorbar();
 
+
 # Convert matplotlib contourf to geojson
 geojson = geojsoncontour.contourf_to_geojson(
     contourf=contourf,
@@ -316,6 +337,10 @@ geomap.add_child(cm)
 
 # Fullscreen mode
 plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap)
+
+# add makers with link to google maps satellite images
+if nplaces > 0:
+    geomap = add_googlemaps(nplaces, geomap, X, Y, Z_meter)
 
 # load GPX file
 if gpx:
