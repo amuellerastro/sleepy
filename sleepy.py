@@ -124,7 +124,7 @@ def add_googlemaps(nplaces, geomap, X, Y, Z_meter):
     return geomap
 
 
-def generate_tmp_map(coords, all_coords, zoom_level):
+def generate_tmp_map(coords, all_coords, zoom_level, fout_name):
     base_map = generate_base_map(location=[coords[1], coords[0]], zoom_start = zoom_level)
     # Marker of the coordinates provided by user
     label = folium.Popup("User Coordinates Lon: {} Lat: {}".format(round(coords[0],2), round(coords[1],2)))
@@ -149,8 +149,11 @@ def generate_tmp_map(coords, all_coords, zoom_level):
             fill_opacity=0.4,
             parse_html=False).add_to(base_map)
 
-    base_map.save('tmp.html')
+    base_map.save(f'folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}'
+    f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}'
+    f'_dist{np.round(vmax, 3)}.html')
 
+    base_map.save(fout_name)
 
 
 parser = argparse.ArgumentParser()
@@ -217,7 +220,9 @@ search_box = [coords[1] - alpha, coords[0] - alpha / lat_corr, coords[1] + alpha
 all_coords = query_overpass(search_box)
 
 # map showing result from query and central coordinates
-generate_tmp_map(coords, all_coords, zoom_level)
+fout_name = f'tmp_folium_contour_map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
+generate_tmp_map(coords, all_coords, zoom_level, fout_name)
 
 # create a 2D array regularly gridded, based on the required resulotion, e.g. 20m
 # at the moment take the center latitude to compute the correction factor
