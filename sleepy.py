@@ -115,8 +115,13 @@ def add_googlemaps(nplaces, geomap, X, Y, Z_meter):
     for idx in range(0,nplaces):
         url = "https://www.google.com/maps/@"+str(Y_1d[idxs[idx]])+","+str(X_1d[idxs[idx]])+","+str(zoom_level)+"z/data=!3m1!1e3"
         link_text = "Google Maps"
-        tmp_dist = round(Z_1d[idxs[idx]])
-        label = folium.Html('<a href="' + url + '"target="_blank">' + link_text + '</a>', script=True)
+        url_topo =  "https://opentopomap.org/#map=" + str(zoom_level) + "/" + str(Y_1d[idxs[idx]]) + "/" + str(X_1d[idxs[idx]])
+        link_text_topo = "Topo Map"
+
+        tmp_dist = str(round(Z_1d[idxs[idx]]))
+        tmp_dist_str = f'Dist. {tmp_dist} m'
+        label = folium.Html(tmp_dist_str+'    '+'<a href="' + url + '"target="_blank">' + link_text + '</a>' +'    '+
+                            '<a href="' + url_topo + '"target="_blank">' + link_text_topo + '</a>', script=True)
         popup = folium.Popup(label, parse_html=True)
         folium.Marker(
             [Y_1d[idxs[idx]], X_1d[idxs[idx]]],
