@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # https://towardsdatascience.com/loading-data-from-openstreetmap-with-python-and-the-overpass-api-513882a27fd0
 
 import numpy as np
@@ -179,6 +180,8 @@ gpx = args.gpx
 nplaces = int(args.nplaces)
 
 
+
+
 grid_resolution = grid_resolution_meter / 1000
 
 # define initial zoom level of map
@@ -333,6 +336,41 @@ geomap.add_child(cm)
 
 # Fullscreen mode
 plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap)
+
+##################################################
+#
+# # elevation
+# # https://www.opentopodata.org/api/
+# X_1d = X.flatten()
+# Y_1d = Y.flatten()
+# # coord_string = ''
+# # for i in range(0,len(X_1d)):
+# #     if i<len(X_1d)-1:
+# #         coord_string += f'{Y_1d[i]},{X_1d[i]}|'
+# #     else:
+# #         coord_string += f'{Y_1d[i]},{X_1d[i]}'
+# elevation = []
+# for i in range(0,len(X_1d)):
+#     print(i, len(X_1d))
+#     topo_url = f"https://api.opentopodata.org/v1/srtm90m?locations={Y_1d[i]},{X_1d[i]}&interpolation=cubic"
+#     response = requests.get(topo_url)
+#     data_topo = response.json()
+#     print(data_topo['results'][0]['elevation'])
+#     elevation.append(data_topo['results'][0]['elevation'])
+#
+# print(elevation)
+# print(len(elevation))
+#
+# # topo_url = f"https://api.opentopodata.org/v1/srtm90m?locations={coord_string}&interpolation=cubic"
+# # print(topo_url)
+# # response = requests.get(topo_url)
+# # data_topo = response.json()
+# #
+# # print(data_topo)
+# # print(type(data_topo))
+# # print(len(data_topo))
+
+##################################################
 
 # add makers with link to google maps satellite images
 if nplaces > 0:
