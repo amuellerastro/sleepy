@@ -338,39 +338,185 @@ geomap.add_child(cm)
 plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap)
 
 ##################################################
-#
-# # elevation
-# # https://www.opentopodata.org/api/
-# X_1d = X.flatten()
-# Y_1d = Y.flatten()
-# # coord_string = ''
-# # for i in range(0,len(X_1d)):
-# #     if i<len(X_1d)-1:
-# #         coord_string += f'{Y_1d[i]},{X_1d[i]}|'
-# #     else:
-# #         coord_string += f'{Y_1d[i]},{X_1d[i]}'
-# elevation = []
-# for i in range(0,len(X_1d)):
-#     print(i, len(X_1d))
-#     topo_url = f"https://api.opentopodata.org/v1/srtm90m?locations={Y_1d[i]},{X_1d[i]}&interpolation=cubic"
-#     response = requests.get(topo_url)
-#     data_topo = response.json()
-#     print(data_topo['results'][0]['elevation'])
-#     elevation.append(data_topo['results'][0]['elevation'])
-#
-# print(elevation)
-# print(len(elevation))
-#
-# # topo_url = f"https://api.opentopodata.org/v1/srtm90m?locations={coord_string}&interpolation=cubic"
-# # print(topo_url)
-# # response = requests.get(topo_url)
-# # data_topo = response.json()
-# #
-# # print(data_topo)
-# # print(type(data_topo))
-# # print(len(data_topo))
+##################################################
+##################################################
+
+from tqdm import trange
+import pandas as pd
+
+
+# https://stackoverflow.com/questions/55827778/elevation-xyz-data-to-slope-gradient-map-using-python
+def window3x3(arr, shape=(3, 3)):
+    r_win = np.floor(shape[0] / 2).astype(int)
+    c_win = np.floor(shape[1] / 2).astype(int)
+    x, y = arr.shape
+    for i in range(x):
+        xmin = max(0, i - r_win)
+        xmax = min(x, i + r_win + 1)
+        for j in range(y):
+            ymin = max(0, j - c_win)
+            ymax = min(y, j + c_win + 1)
+            yield arr[xmin:xmax, ymin:ymax]
+
+
+def gradient(XYZ_file, min=0, max=15, figsize=(15, 10), **kwargs):
+
+    """
+
+    :param XYZ_file: XYZ file in the following format: x,y,z (inlcuding headers)
+    :param min: color bar minimum range.
+    :param max: color bar maximum range.
+    :param figsize: figure size.
+    :param kwargs:
+           plot: to plot a gradient map. Default is True.
+    :return: returns an array with the shape of the grid with the computed slopes
+
+
+    The algorithm calculates the gradient using a first-order forward or backward difference on the corner points, first
+    order central differences at the boarder points, and a 3x3 moving window for every cell with 8 surrounding cells (in
+    the middle of the grid) using a third-order finite difference weighted by reciprocal of squared distance
+
+    Assumed 3x3 window:
+
+                        -------------------------
+                        |   a   |   b   |   c   |
+                        -------------------------
+                        |   d   |   e   |   f   |
+                        -------------------------
+                        |   g   |   h   |   i   |
+                        -------------------------
+
+
+    """
+
+    kwargs.setdefault('plot', True)
+
+    grid = XYZ_file.to_numpy()
+
+    nx = XYZ_file['x'].unique().size
+    ny = XYZ_file['y'].unique().size
+#     nx = len(X)
+#     ny = len(Y)
+
+    xs = grid[:, 0].reshape(ny, nx, order='F')
+    ys = grid[:, 1].reshape(ny, nx, order='F')
+    zs = grid[:, 2].reshape(ny, nx, order='F')
+    # xs = X.reshape(ny, nx, order='F')
+    # ys = Y.reshape(ny, nx, order='F')
+    # zs = Z.reshape(ny, nx, order='F')
+    dx = abs((xs[:, 1:] - xs[:, :-1]).mean())
+    dy = abs((ys[1:, :] - ys[:-1, :]).mean())
+
+    gen = window3x3(zs)
+    windows_3x3 = np.asarray(list(gen))
+    windows_3x3 = windows_3x3.reshape(ny, nx)
+
+    dzdx = np.empty((ny, nx))
+    dzdy = np.empty((ny, nx))
+    loc_string = np.empty((ny, nx), dtype="S25")
+
+    for ax_y in trange(ny):
+        for ax_x in range(nx):
+
+            # corner points
+            if ax_x == 0 and ax_y == 0:  # top left corner
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][0][1] - windows_3x3[ax_y, ax_x][0][0]) / dx
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][0] - windows_3x3[ax_y, ax_x][0][0]) / dy
+                loc_string[ax_y, ax_x] = 'top left corner'
+
+            elif ax_x == nx - 1 and ax_y == 0:  # top right corner
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][0][1] - windows_3x3[ax_y, ax_x][0][0]) / dx
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
+                loc_string[ax_y, ax_x] = 'top right corner'
+
+            elif ax_x == 0 and ax_y == ny - 1:  # bottom left corner
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][0] - windows_3x3[ax_y, ax_x][0][0]) / dy
+                loc_string[ax_y, ax_x] = 'bottom left corner'
+
+            elif ax_x == nx - 1 and ax_y == ny - 1:  # bottom right corner
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
+                loc_string[ax_y, ax_x] = 'bottom right corner'
+
+            # top boarder
+            elif (ax_y == 0) and (ax_x != 0 and ax_x != nx - 1):
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][0][-1] - windows_3x3[ax_y, ax_x][0][0]) / (2 * dx)
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
+                loc_string[ax_y, ax_x] = 'top boarder'
+
+            # bottom boarder
+            elif ax_y == ny - 1 and (ax_x != 0 and ax_x != nx - 1):
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][-1] - windows_3x3[ax_y, ax_x][1][0]) / (2 * dx)
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
+                loc_string[ax_y, ax_x] = 'bottom boarder'
+
+            # left boarder
+            elif ax_x == 0 and (ax_y != 0 and ax_y != ny - 1):
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][-1][0] - windows_3x3[ax_y, ax_x][0][0]) / (2 * dy)
+                loc_string[ax_y, ax_x] = 'left boarder'
+
+            # right boarder
+            elif ax_x == nx - 1 and (ax_y != 0 and ax_y != ny - 1):
+                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
+                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][-1][-1] - windows_3x3[ax_y, ax_x][0][-1]) / (2 * dy)
+                loc_string[ax_y, ax_x] = 'right boarder'
+
+            # middle grid
+            else:
+                a = windows_3x3[ax_y, ax_x][0][0]
+                b = windows_3x3[ax_y, ax_x][0][1]
+                c = windows_3x3[ax_y, ax_x][0][-1]
+                d = windows_3x3[ax_y, ax_x][1][0]
+                f = windows_3x3[ax_y, ax_x][1][-1]
+                g = windows_3x3[ax_y, ax_x][-1][0]
+                h = windows_3x3[ax_y, ax_x][-1][1]
+                i = windows_3x3[ax_y, ax_x][-1][-1]
+
+                dzdx[ax_y, ax_x] = ((c + 2 * f + i) - (a + 2 * d + g)) / (8 * dx)
+                dzdy[ax_y, ax_x] = ((g + 2 * h + i) - (a + 2 * b + c)) / (8 * dy)
+                loc_string[ax_y, ax_x] = 'middle grid'
+
+    hpot = np.hypot(abs(dzdy), abs(dzdx))
+    slopes_angle = np.degrees(np.arctan(hpot))
+    if kwargs['plot']:
+        slopes_angle[(slopes_angle < min) | (slopes_angle > max)]
+
+        plt.figure(figsize=figsize)
+        # plt.pcolormesh(xs, ys, slopes_angle, cmap=plt.cm.gist_yarg, vmax=max, vmin=min)
+        plt.pcolormesh(xs, ys, slopes_angle, cmap=plt.cm.gist_yarg, vmax=np.max(slopes_angle), vmin=np.min(slopes_angle))
+
+        plt.colorbar()
+        plt.tight_layout()
+        plt.show()
+
+    return slopes_angle
+
+
+# elevation
+# https://www.opentopodata.org/api/
+X_1d = X.flatten()
+Y_1d = Y.flatten()
+
+elevation = []
+for i in range(0,len(X_1d)):
+    #print(i, len(X_1d))
+    topo_url = f"http://localhost:5000/v1/eudem25m?locations={Y_1d[i]},{X_1d[i]}"
+    response = requests.get(topo_url)
+    data_topo = response.json()
+    #print(data_topo['results'][0]['elevation'])
+    elevation.append(data_topo['results'][0]['elevation'])
+
+#np.savetxt("foo.csv", np.transpose(np.array([X_1d, Y_1d, elevation])), delimiter=",")
+XYZ = pd.read_csv('foo.csv')
+slopes = gradient(XYZ)
+#slopes = gradient(X_1d, Y_1d, elevation)
 
 ##################################################
+##################################################
+##################################################
+
 
 # add makers with link to google maps satellite images
 if nplaces > 0:
