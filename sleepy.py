@@ -506,27 +506,40 @@ def gradient(X, Y, Z, min=0, max=15, figsize=(15, 10), **kwargs):
 X_1d = X.flatten()
 Y_1d = Y.flatten()
 
-url_coords = ''
-for i in range(0,len(X_1d)):
-    if i < len(X_1d)-1:
-        url_coords += f"{Y_1d[i]},{X_1d[i]}|"
-    else:
-        url_coords += f"{Y_1d[i]},{X_1d[i]}"
+# url_coords = ''
+# for i in range(0,len(X_1d)):
+#     if i < len(X_1d)-1:
+#         url_coords += f"{Y_1d[i]},{X_1d[i]}|"
+#     else:
+#         url_coords += f"{Y_1d[i]},{X_1d[i]}"
+#
+# topo_url = f"http://localhost:5000/v1/eudem25m?locations={url_coords}&interpolation=cubic"
+# response = requests.get(topo_url)
+# data_topo = response.json()
+#
+# elevation = []
+# for i in range(len(X_1d)):
+#     elevation.append(data_topo['results'][i]['elevation'])
 
-topo_url = f"http://localhost:5000/v1/eudem25m?locations={url_coords}&interpolation=cubic"
-response = requests.get(topo_url)
-data_topo = response.json()
+from progress.bar import Bar, ChargingBar
+
+#bar = Bar('Query Location', max=len(X_1d))
+cbar = ChargingBar('Query Location', max=len(X_1d))
 
 elevation = []
-for i in range(len(X_1d)):
-    elevation.append(data_topo['results'][i]['elevation'])
+for i in range(0, len(X_1d)):
+    topo_url = f"http://localhost:5000/v1/eudem25m?locations={Y_1d[i]},{X_1d[i]}&interpolation=cubic"
+    response = requests.get(topo_url)
+    data_topo = response.json()
+    elevation.append(data_topo['results'][0]['elevation'])
+    cbar.next()
+cbar.finish()
 
-
-#import pdb; pdb.set_trace()
 
 #np.savetxt("foo.csv", np.transpose(np.array([X_1d, Y_1d, elevation])), delimiter=",")
 #XYZ = pd.read_csv('foo.csv')
 slopes = gradient(X_1d, Y_1d, elevation)
+# import pdb; pdb.set_trace()
 #slopes = gradient(X_1d, Y_1d, elevation)
 
 ##################################################
