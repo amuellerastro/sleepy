@@ -359,7 +359,7 @@ def window3x3(arr, shape=(3, 3)):
             yield arr[xmin:xmax, ymin:ymax]
 
 
-def gradient(XYZ_file, min=0, max=15, figsize=(15, 10), **kwargs):
+def gradient(X, Y, Z, min=0, max=15, figsize=(15, 10), **kwargs):
 
     """
 
@@ -391,19 +391,25 @@ def gradient(XYZ_file, min=0, max=15, figsize=(15, 10), **kwargs):
 
     kwargs.setdefault('plot', True)
 
-    grid = XYZ_file.to_numpy()
+    Z = np.array(Z)
+    #grid = XYZ_file.to_numpy()
 
-    nx = XYZ_file['x'].unique().size
-    ny = XYZ_file['y'].unique().size
-#     nx = len(X)
-#     ny = len(Y)
+    #nx = XYZ_file['x'].unique().size
+    #ny = XYZ_file['y'].unique().size
+    nx = np.unique(X).size
+    ny = np.unique(Y).size
 
-    xs = grid[:, 0].reshape(ny, nx, order='F')
-    ys = grid[:, 1].reshape(ny, nx, order='F')
-    zs = grid[:, 2].reshape(ny, nx, order='F')
-    # xs = X.reshape(ny, nx, order='F')
-    # ys = Y.reshape(ny, nx, order='F')
-    # zs = Z.reshape(ny, nx, order='F')
+    #xs = grid[:, 0].reshape(ny, nx, order='F')
+    #ys = grid[:, 1].reshape(ny, nx, order='F')
+    #zs = grid[:, 2].reshape(ny, nx, order='F')
+
+    # print(nx, ny)
+#    print(type(xs), len(xs), xs.shape, xs)
+#    import pdb; pdb.set_trace()
+    xs = X.reshape(ny, nx, order='F')
+    ys = Y.reshape(ny, nx, order='F')
+    zs = Z.reshape(ny, nx, order='F')
+
     dx = abs((xs[:, 1:] - xs[:, :-1]).mean())
     dy = abs((ys[1:, :] - ys[:-1, :]).mean())
 
@@ -480,6 +486,7 @@ def gradient(XYZ_file, min=0, max=15, figsize=(15, 10), **kwargs):
 
     hpot = np.hypot(abs(dzdy), abs(dzdx))
     slopes_angle = np.degrees(np.arctan(hpot))
+
     if kwargs['plot']:
         slopes_angle[(slopes_angle < min) | (slopes_angle > max)]
 
@@ -499,18 +506,27 @@ def gradient(XYZ_file, min=0, max=15, figsize=(15, 10), **kwargs):
 X_1d = X.flatten()
 Y_1d = Y.flatten()
 
-elevation = []
+url_coords = ''
 for i in range(0,len(X_1d)):
-    #print(i, len(X_1d))
-    topo_url = f"http://localhost:5000/v1/eudem25m?locations={Y_1d[i]},{X_1d[i]}"
-    response = requests.get(topo_url)
-    data_topo = response.json()
-    #print(data_topo['results'][0]['elevation'])
-    elevation.append(data_topo['results'][0]['elevation'])
+    if i < len(X_1d)-1:
+        url_coords += f"{Y_1d[i]},{X_1d[i]}|"
+    else:
+        url_coords += f"{Y_1d[i]},{X_1d[i]}"
+
+topo_url = f"http://localhost:5000/v1/eudem25m?locations={url_coords}&interpolation=cubic"
+response = requests.get(topo_url)
+data_topo = response.json()
+
+elevation = []
+for i in range(len(X_1d)):
+    elevation.append(data_topo['results'][i]['elevation'])
+
+
+#import pdb; pdb.set_trace()
 
 #np.savetxt("foo.csv", np.transpose(np.array([X_1d, Y_1d, elevation])), delimiter=",")
-XYZ = pd.read_csv('foo.csv')
-slopes = gradient(XYZ)
+#XYZ = pd.read_csv('foo.csv')
+slopes = gradient(X_1d, Y_1d, elevation)
 #slopes = gradient(X_1d, Y_1d, elevation)
 
 ##################################################
