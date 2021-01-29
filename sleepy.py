@@ -17,7 +17,7 @@ import gpxpy
 import gpxpy.gpx
 from tqdm import trange
 # from progress.bar import ChargingBar
-
+# import pdb; pdb.set_trace()
 
 def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
     base_map = folium.Map(location=location, control_scale=True, zoom_start=zoom_start, tiles=tiles)
@@ -160,6 +160,100 @@ def generate_tmp_map(coords, all_coords, zoom_level, fout_name):
     base_map.save(fout_name)
 
 
+def make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels, cmap_name, hex_values):
+    #cbar = ChargingBar('Query Location', max=len(X_1d))
+    elevation = []
+    for i in trange(0, len(X_1d)):
+        # https://www.opentopodata.org/api/
+        topo_url = f"http://localhost:5000/v1/eudem25m?locations={Y_1d[i]},{X_1d[i]}&interpolation=cubic"
+        response = requests.get(topo_url)
+        data_topo = response.json()
+        elevation.append(data_topo['results'][0]['elevation'])
+        #cbar.next()
+    #cbar.finish()
+
+    # https://medium.com/ai-in-plain-english/introduction-to-digital-elevation-map-processing-visualization-in-python-4bb7aa65f2b1
+    elevation_array = np.array(elevation)
+    elevation_2d = elevation_array.reshape(np.unique(X_1d).size, np.unique(Y_1d).size)
+    dx, dy = np.gradient(elevation_2d)
+    grad_tot = np.hypot(dx, dy)
+
+    geomap_gradient = generate_base_map(location=[coords[1], coords[0]], zoom_start=zoom_level)
+    plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap_gradient)
+
+    max_grad = np.ceil(np.max((grad_tot)))
+    contourf_gradient = plt.contourf(X, Y, grad_tot, levels, cmap=cmap_name, alpha=1, vmin=0,
+                            vmax=max_grad, linestyles='dashed')  # , colors=colors
+
+    cm_gradient = branca.colormap.LinearColormap(hex_values, vmin=0, vmax=max_grad).to_step(levels)
+    cm_gradient.caption = 'Gradient [meter]'
+    geomap_gradient.add_child(cm_gradient)
+
+    # Convert matplotlib contourf to geojson
+    geojson_gradient = geojsoncontour.contourf_to_geojson(
+        contourf=contourf_gradient,
+        stroke_width=0)
+
+    # Plot the contour plot on folium
+    folium.GeoJson(
+        geojson_gradient,
+        style_function=lambda x: {
+            'weight': x['properties']['stroke-width'],
+            'fillColor': x['properties']['fill'],
+            'opacity': 0.5,  # does not work
+            'weight': 0.4
+        }).add_to(geomap_gradient)
+
+    # Save the map
+    fout_1 = f'_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+        f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}_gradient.html'
+    if not area_name:
+        fout_name_gradient  = 'map'+fout_1
+    else:
+        fout_name_gradient = f'{area_name}'+fout_1
+    geomap_gradient.save(fout_name_gradient)
+
+
+    # slope
+    slopes = np.degrees(np.arctan(np.hypot(dy, dx)))
+
+    geomap_slopes = generate_base_map(location=[coords[1], coords[0]], zoom_start=zoom_level)
+    plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap_slopes)
+
+    min_slope = np.ceil(np.min((slopes)))
+    max_slope = np.ceil(np.max((slopes)))
+    contourf_slopes = plt.contourf(X, Y, slopes, levels, cmap=cmap_name, alpha=1, vmin=min_slope,
+                            vmax=max_slope, linestyles='dashed')  # , colors=colors
+
+    cm_slopes = branca.colormap.LinearColormap(hex_values, vmin=min_slope, vmax=max_slope).to_step(levels)
+    cm_slopes.caption = 'Slope [deg]'
+    geomap_slopes.add_child(cm_slopes)
+
+    # Convert matplotlib contourf to geojson
+    geojson_slopes = geojsoncontour.contourf_to_geojson(
+        contourf=contourf_slopes,
+        stroke_width=0)
+
+    # Plot the contour plot on folium
+    folium.GeoJson(
+        geojson_slopes,
+        style_function=lambda x: {
+            'weight': x['properties']['stroke-width'],
+            'fillColor': x['properties']['fill'],
+            'opacity': 0.5,  # does not work
+            'weight': 0.4
+        }).add_to(geomap_slopes)
+
+    # Save the map
+    fout_2 = f'_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+        f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}_slopes.html'
+    if not area_name:
+        fout_name_slopes = 'map'+fout_2
+    else:
+        fout_name_slopes = f'{area_name}'+fout_2
+    geomap_slopes.save(fout_name_slopes)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-area_name', default='')
 parser.add_argument('-lon', default=8.266133)
@@ -294,13 +388,6 @@ hex_values = get_hex_values(cmap_name, levels)
 # create color map
 cm = branca.colormap.LinearColormap(hex_values, vmin=0, vmax=vmax).to_step(levels)
 
-# x_mesh, y_mesh = np.meshgrid(x_orig, y_orig)
-# z_mesh = griddata((x_orig, y_orig), z_orig, (x_mesh, y_mesh), method='linear')
-
-# Gaussian filter the grid to make it smoother
-# sigma = [2, 2]
-# z_mesh = sp.ndimage.filters.gaussian_filter(z_mesh, sigma, mode='constant')
-
 # Create the contour
 # plt.figure(figsize=(10,8))
 contourf = plt.contourf(X, Y, Z_meter, levels, cmap=cmap_name, alpha=1, vmin=0,
@@ -358,67 +445,8 @@ Y_1d = Y.flatten()
 # for i in range(len(X_1d)):
 #     elevation.append(data_topo['results'][i]['elevation'])
 
-# https://www.opentopodata.org/api/
 if topo:
-
-
-
-    #cbar = ChargingBar('Query Location', max=len(X_1d))
-    elevation = []
-    for i in trange(0, len(X_1d)):
-        topo_url = f"http://localhost:5000/v1/eudem25m?locations={Y_1d[i]},{X_1d[i]}&interpolation=cubic"
-        response = requests.get(topo_url)
-        data_topo = response.json()
-        elevation.append(data_topo['results'][0]['elevation'])
-        #cbar.next()
-    #cbar.finish()
-
-
-    # https://medium.com/ai-in-plain-english/introduction-to-digital-elevation-map-processing-visualization-in-python-4bb7aa65f2b1
-    elevation_array = np.array(elevation)
-    elevation_2d = elevation_array.reshape(np.unique(X_1d).size, np.unique(Y_1d).size)
-    dx, dy = np.gradient(elevation_2d)
-    grad_tot = np.hypot(dx, dy)
-
-    # import pdb; pdb.set_trace()
-
-    geomap_topo = generate_base_map(location=[coords[1], coords[0]], zoom_start=zoom_level)
-    plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap_topo)
-
-    tmin = 0 #np.min(grad_tot)
-    tmax = np.max(grad_tot)
-    #tslopes = np.transpose(slopes)
-    contourf_topo = plt.contourf(X, Y, grad_tot, levels, cmap=cmap_name, alpha=1, vmin=tmin,
-                            vmax=tmax, linestyles='dashed')  # , colors=colors
-    # plt.colorbar();
-
-
-    # Convert matplotlib contourf to geojson
-    geojson_topo = geojsoncontour.contourf_to_geojson(
-        contourf=contourf_topo,
-        stroke_width=0)
-
-    # Plot the contour plot on folium
-    folium.GeoJson(
-        geojson_topo,
-        style_function=lambda x: {
-            'weight': x['properties']['stroke-width'],
-            'fillColor': x['properties']['fill'],
-            'opacity': 0.5,  # does not work
-            'weight': 0.4
-        }).add_to(geomap_topo)
-
-    # Save the map
-    fout_1 = f'_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
-        f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}_gradient.html'
-    if not area_name:
-        fout_name_topo  = 'map'+fout_1
-    else:
-        fout_name_topo = f'{area_name}'+fout_1
-    geomap_topo.save(fout_name_topo)
-
-
-import pdb; pdb.set_trace()
+    make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels, cmap_name, hex_values)
 
 # add makers with link to google maps satellite images
 if nplaces > 0:
@@ -428,11 +456,11 @@ if nplaces > 0:
 if gpx:
     geomap = add_gpx_track(gpx, geomap)
 
+# Save the map
 fout_tmp = f'_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
     f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
 if not area_name:
     fout_name = 'map'+fout_tmp
-# Save the map
 else:
     fout_name = f'{area_name}'+fout_tmp
 geomap.save(fout_name)
