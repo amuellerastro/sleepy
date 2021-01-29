@@ -31,6 +31,10 @@ The available options are:
     -nplaces       If >0 then n markers at position of largest distance are placed with popus 
                     containing a link to google maps satellite images. The zoom level is 
                     identical to the original folium map zoom level. Default=0.
+    -topo          If True (default=False) the elevation of the defined grid of coordinates is queried
+                    via an API from a local setup server and data set 
+                    (see https://www.opentopodata.org/ for details). Depending on the grid size and resolution
+                    this query can take up several minutes.
 
 
 Output
@@ -57,3 +61,4 @@ Dependencies
    1. python-requests
    1. python-argparse
    1. python-gpxpy
+   1. python-tqdm
