@@ -160,7 +160,8 @@ def generate_tmp_map(coords, all_coords, zoom_level, fout_name):
     base_map.save(fout_name)
 
 
-def make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels, cmap_name, hex_values):
+def make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels):
+    cmap_name_topo = 'Reds'
     #cbar = ChargingBar('Query Location', max=len(X_1d))
     elevation = []
     for i in trange(0, len(X_1d)):
@@ -182,10 +183,11 @@ def make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels, cmap_name, hex_values
     plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap_gradient)
 
     max_grad = np.ceil(np.max((grad_tot)))
-    contourf_gradient = plt.contourf(X, Y, grad_tot, levels, cmap=cmap_name, alpha=1, vmin=0,
+    contourf_gradient = plt.contourf(X, Y, grad_tot, levels, cmap=cmap_name_topo, alpha=1, vmin=0,
                             vmax=max_grad, linestyles='dashed')  # , colors=colors
 
-    cm_gradient = branca.colormap.LinearColormap(hex_values, vmin=0, vmax=max_grad).to_step(levels)
+    hex_values_topo = get_hex_values(cmap_name_topo, levels)
+    cm_gradient = branca.colormap.LinearColormap(hex_values_topo, vmin=0, vmax=max_grad).to_step(levels)
     cm_gradient.caption = 'Gradient [meter]'
     geomap_gradient.add_child(cm_gradient)
 
@@ -222,10 +224,10 @@ def make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels, cmap_name, hex_values
 
     min_slope = np.ceil(np.min((slopes)))
     max_slope = np.ceil(np.max((slopes)))
-    contourf_slopes = plt.contourf(X, Y, slopes, levels, cmap=cmap_name, alpha=1, vmin=min_slope,
+    contourf_slopes = plt.contourf(X, Y, slopes, levels, cmap=cmap_name_topo, alpha=1, vmin=min_slope,
                             vmax=max_slope, linestyles='dashed')  # , colors=colors
 
-    cm_slopes = branca.colormap.LinearColormap(hex_values, vmin=min_slope, vmax=max_slope).to_step(levels)
+    cm_slopes = branca.colormap.LinearColormap(hex_values_topo, vmin=min_slope, vmax=max_slope).to_step(levels)
     cm_slopes.caption = 'Slope [deg]'
     geomap_slopes.add_child(cm_slopes)
 
@@ -370,15 +372,6 @@ Z_meter = Z * 1e3
 # colors = ['blue','royalblue', 'navy','pink',  'mediumpurple',  'darkorchid',  'plum',  'm', 'mediumvioletred', 'palevioletred', 'crimson',
 #         'magenta','pink','red','yellow','orange', 'brown','green', 'darkgreen']
 
-# hex values from colorbar:
-# import matplotlib
-# import matplotlib.cm
-# cmap = cm.get_cmap('seismic', 5)    # PiYG
-# for i in range(cmap.N):
-#     rgba = cmap(i)
-#     # rgb2hex accepts rgb or rgba
-#     print(matplotlib.colors.rgb2hex(rgba))
-
 # levels = len(colors) # without -1 the display would not be correct
 levels = 30  # np.linspace(0, 1000, 100)
 
@@ -386,7 +379,7 @@ levels = 30  # np.linspace(0, 1000, 100)
 hex_values = get_hex_values(cmap_name, levels)
 
 # create color map
-cm = branca.colormap.LinearColormap(hex_values, vmin=0, vmax=vmax).to_step(levels)
+cm_dist = branca.colormap.LinearColormap(hex_values, vmin=0, vmax=vmax).to_step(levels)
 
 # Create the contour
 # plt.figure(figsize=(10,8))
@@ -418,35 +411,17 @@ folium.GeoJson(
         'weight': 0.4
     }).add_to(geomap)
 
-# Add the colormap to the folium map
-cm.caption = 'Distance [meter]'
-geomap.add_child(cm)
-
 # Fullscreen mode
 plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap)
 
-# elevation
-
-X_1d = X.flatten()
-Y_1d = Y.flatten()
-
-# url_coords = ''
-# for i in range(0,len(X_1d)):
-#     if i < len(X_1d)-1:
-#         url_coords += f"{Y_1d[i]},{X_1d[i]}|"
-#     else:
-#         url_coords += f"{Y_1d[i]},{X_1d[i]}"
-#
-# topo_url = f"http://localhost:5000/v1/eudem25m?locations={url_coords}&interpolation=cubic"
-# response = requests.get(topo_url)
-# data_topo = response.json()
-#
-# elevation = []
-# for i in range(len(X_1d)):
-#     elevation.append(data_topo['results'][i]['elevation'])
+# Add the colormap to the folium map
+cm_dist.caption = 'Distance [meter]'
+geomap.add_child(cm_dist)
 
 if topo:
-    make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels, cmap_name, hex_values)
+    X_1d = X.flatten()
+    Y_1d = Y.flatten()
+    make_topo_maps(X_1d, Y_1d, coords, zoom_level, levels)
 
 # add makers with link to google maps satellite images
 if nplaces > 0:
