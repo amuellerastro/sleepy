@@ -16,7 +16,7 @@ import argparse
 import gpxpy
 import gpxpy.gpx
 from tqdm import trange
-from progress.bar import ChargingBar
+# from progress.bar import ChargingBar
 
 
 def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
@@ -160,153 +160,6 @@ def generate_tmp_map(coords, all_coords, zoom_level, fout_name):
     base_map.save(fout_name)
 
 
-# https://stackoverflow.com/questions/55827778/elevation-xyz-data-to-slope-gradient-map-using-python
-def window3x3(arr, shape=(3, 3)):
-    r_win = np.floor(shape[0] / 2).astype(int)
-    c_win = np.floor(shape[1] / 2).astype(int)
-    x, y = arr.shape
-    for i in range(x):
-        xmin = max(0, i - r_win)
-        xmax = min(x, i + r_win + 1)
-        for j in range(y):
-            ymin = max(0, j - c_win)
-            ymax = min(y, j + c_win + 1)
-            yield arr[xmin:xmax, ymin:ymax]
-
-
-def gradient(X, Y, Z, min=0, max=15, figsize=(15, 10), **kwargs):
-
-    """
-
-    :param X, Y, Z: lon, lat, elevation
-    :param min: color bar minimum range.
-    :param max: color bar maximum range.
-    :param figsize: figure size.
-    :param kwargs:
-           plot: to plot a gradient map. Default is True.
-    :return: returns an array with the shape of the grid with the computed slopes
-
-
-    The algorithm calculates the gradient using a first-order forward or backward difference on the corner points, first
-    order central differences at the boarder points, and a 3x3 moving window for every cell with 8 surrounding cells (in
-    the middle of the grid) using a third-order finite difference weighted by reciprocal of squared distance
-
-    Assumed 3x3 window:
-
-                        -------------------------
-                        |   a   |   b   |   c   |
-                        -------------------------
-                        |   d   |   e   |   f   |
-                        -------------------------
-                        |   g   |   h   |   i   |
-                        -------------------------
-
-
-    """
-
-    kwargs.setdefault('plot', False)
-
-    Z = np.array(Z)
-
-    nx = np.unique(X).size
-    ny = np.unique(Y).size
-
-#    import pdb; pdb.set_trace()
-    xs = X.reshape(ny, nx, order='F')
-    ys = Y.reshape(ny, nx, order='F')
-    zs = Z.reshape(ny, nx, order='F')
-
-    dx = abs((xs[:, 1:] - xs[:, :-1]).mean())
-    dy = abs((ys[1:, :] - ys[:-1, :]).mean())
-
-    gen = window3x3(zs)
-    windows_3x3 = np.asarray(list(gen))
-    windows_3x3 = windows_3x3.reshape(ny, nx)
-
-    dzdx = np.empty((ny, nx))
-    dzdy = np.empty((ny, nx))
-    loc_string = np.empty((ny, nx), dtype="S25")
-
-    for ax_y in trange(ny):
-        for ax_x in range(nx):
-
-            # corner points
-            if ax_x == 0 and ax_y == 0:  # top left corner
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][0][1] - windows_3x3[ax_y, ax_x][0][0]) / dx
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][0] - windows_3x3[ax_y, ax_x][0][0]) / dy
-                loc_string[ax_y, ax_x] = 'top left corner'
-
-            elif ax_x == nx - 1 and ax_y == 0:  # top right corner
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][0][1] - windows_3x3[ax_y, ax_x][0][0]) / dx
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
-                loc_string[ax_y, ax_x] = 'top right corner'
-
-            elif ax_x == 0 and ax_y == ny - 1:  # bottom left corner
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][0] - windows_3x3[ax_y, ax_x][0][0]) / dy
-                loc_string[ax_y, ax_x] = 'bottom left corner'
-
-            elif ax_x == nx - 1 and ax_y == ny - 1:  # bottom right corner
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
-                loc_string[ax_y, ax_x] = 'bottom right corner'
-
-            # top boarder
-            elif (ax_y == 0) and (ax_x != 0 and ax_x != nx - 1):
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][0][-1] - windows_3x3[ax_y, ax_x][0][0]) / (2 * dx)
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
-                loc_string[ax_y, ax_x] = 'top boarder'
-
-            # bottom boarder
-            elif ax_y == ny - 1 and (ax_x != 0 and ax_x != nx - 1):
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][-1] - windows_3x3[ax_y, ax_x][1][0]) / (2 * dx)
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][0][1]) / dy
-                loc_string[ax_y, ax_x] = 'bottom boarder'
-
-            # left boarder
-            elif ax_x == 0 and (ax_y != 0 and ax_y != ny - 1):
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][-1][0] - windows_3x3[ax_y, ax_x][0][0]) / (2 * dy)
-                loc_string[ax_y, ax_x] = 'left boarder'
-
-            # right boarder
-            elif ax_x == nx - 1 and (ax_y != 0 and ax_y != ny - 1):
-                dzdx[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][1][1] - windows_3x3[ax_y, ax_x][1][0]) / dx
-                dzdy[ax_y, ax_x] = (windows_3x3[ax_y, ax_x][-1][-1] - windows_3x3[ax_y, ax_x][0][-1]) / (2 * dy)
-                loc_string[ax_y, ax_x] = 'right boarder'
-
-            # middle grid
-            else:
-                a = windows_3x3[ax_y, ax_x][0][0]
-                b = windows_3x3[ax_y, ax_x][0][1]
-                c = windows_3x3[ax_y, ax_x][0][-1]
-                d = windows_3x3[ax_y, ax_x][1][0]
-                f = windows_3x3[ax_y, ax_x][1][-1]
-                g = windows_3x3[ax_y, ax_x][-1][0]
-                h = windows_3x3[ax_y, ax_x][-1][1]
-                i = windows_3x3[ax_y, ax_x][-1][-1]
-
-                dzdx[ax_y, ax_x] = ((c + 2 * f + i) - (a + 2 * d + g)) / (8 * dx)
-                dzdy[ax_y, ax_x] = ((g + 2 * h + i) - (a + 2 * b + c)) / (8 * dy)
-                loc_string[ax_y, ax_x] = 'middle grid'
-
-    hpot = np.hypot(abs(dzdy), abs(dzdx))
-    slopes_angle = np.degrees(np.arctan(hpot))
-
-    if kwargs['plot']:
-        slopes_angle[(slopes_angle < min) | (slopes_angle > max)]
-
-        plt.figure(figsize=figsize)
-        # plt.pcolormesh(xs, ys, slopes_angle, cmap=plt.cm.gist_yarg, vmax=max, vmin=min)
-        plt.pcolormesh(xs, ys, slopes_angle, cmap=plt.cm.gist_yarg, vmax=np.max(slopes_angle), vmin=np.min(slopes_angle))
-
-        plt.colorbar()
-        plt.tight_layout()
-        plt.show()
-
-    return slopes_angle
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-area_name', default='')
 parser.add_argument('-lon', default=8.266133)
@@ -329,8 +182,6 @@ vmax = float(args.min_dist)
 gpx = args.gpx
 nplaces = int(args.nplaces)
 topo = args.topo
-
-
 
 grid_resolution = grid_resolution_meter / 1000
 
@@ -487,7 +338,6 @@ geomap.add_child(cm)
 # Fullscreen mode
 plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap)
 
-
 # elevation
 
 X_1d = X.flatten()
@@ -510,19 +360,65 @@ Y_1d = Y.flatten()
 
 # https://www.opentopodata.org/api/
 if topo:
-    cbar = ChargingBar('Query Location', max=len(X_1d))
+
+
+
+    #cbar = ChargingBar('Query Location', max=len(X_1d))
     elevation = []
-    for i in range(0, len(X_1d)):
+    for i in trange(0, len(X_1d)):
         topo_url = f"http://localhost:5000/v1/eudem25m?locations={Y_1d[i]},{X_1d[i]}&interpolation=cubic"
         response = requests.get(topo_url)
         data_topo = response.json()
         elevation.append(data_topo['results'][0]['elevation'])
-        cbar.next()
-    cbar.finish()
+        #cbar.next()
+    #cbar.finish()
 
-    slopes = gradient(X_1d, Y_1d, elevation)
 
-# import pdb; pdb.set_trace()
+    # https://medium.com/ai-in-plain-english/introduction-to-digital-elevation-map-processing-visualization-in-python-4bb7aa65f2b1
+    elevation_array = np.array(elevation)
+    elevation_2d = elevation_array.reshape(np.unique(X_1d).size, np.unique(Y_1d).size)
+    dx, dy = np.gradient(elevation_2d)
+    grad_tot = np.hypot(dx, dy)
+
+    # import pdb; pdb.set_trace()
+
+    geomap_topo = generate_base_map(location=[coords[1], coords[0]], zoom_start=zoom_level)
+    plugins.Fullscreen(position='topright', force_separate_button=True).add_to(geomap_topo)
+
+    tmin = 0 #np.min(grad_tot)
+    tmax = np.max(grad_tot)
+    #tslopes = np.transpose(slopes)
+    contourf_topo = plt.contourf(X, Y, grad_tot, levels, cmap=cmap_name, alpha=1, vmin=tmin,
+                            vmax=tmax, linestyles='dashed')  # , colors=colors
+    # plt.colorbar();
+
+
+    # Convert matplotlib contourf to geojson
+    geojson_topo = geojsoncontour.contourf_to_geojson(
+        contourf=contourf_topo,
+        stroke_width=0)
+
+    # Plot the contour plot on folium
+    folium.GeoJson(
+        geojson_topo,
+        style_function=lambda x: {
+            'weight': x['properties']['stroke-width'],
+            'fillColor': x['properties']['fill'],
+            'opacity': 0.5,  # does not work
+            'weight': 0.4
+        }).add_to(geomap_topo)
+
+    # Save the map
+    fout_1 = f'_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+        f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}_gradient.html'
+    if not area_name:
+        fout_name_topo  = 'map'+fout_1
+    else:
+        fout_name_topo = f'{area_name}'+fout_1
+    geomap_topo.save(fout_name_topo)
+
+
+import pdb; pdb.set_trace()
 
 # add makers with link to google maps satellite images
 if nplaces > 0:
@@ -532,12 +428,12 @@ if nplaces > 0:
 if gpx:
     geomap = add_gpx_track(gpx, geomap)
 
-if not area_name:
-    fout_name  = f'map_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
+fout_tmp = f'_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
     f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
+if not area_name:
+    fout_name = 'map'+fout_tmp
 # Save the map
 else:
-    fout_name = f'{area_name}_lon{np.round(coords[0], 5)}_lat{np.round(coords[1], 5)}' \
-            f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(vmax, 3)}.html'
+    fout_name = f'{area_name}'+fout_tmp
 geomap.save(fout_name)
 # geomap
