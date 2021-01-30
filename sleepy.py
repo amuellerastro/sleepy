@@ -6,8 +6,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import branca
-from astropy import units as u
-from astropy.constants import R_earth
 import folium
 from folium import plugins
 import geojsoncontour
@@ -18,6 +16,9 @@ import gpxpy.gpx
 from tqdm import trange
 # from progress.bar import ChargingBar
 # import pdb; pdb.set_trace()
+# from astropy import units as u
+# from astropy.constants import R_earth
+
 
 def generate_base_map(location=[0, 0], zoom_start=12, tiles="OpenStreetMap"):
     base_map = folium.Map(location=location, control_scale=True, zoom_start=zoom_start, tiles=tiles)
