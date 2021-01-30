@@ -310,7 +310,7 @@ parser.add_argument('-res_m', default=100)
 parser.add_argument('-cmap', default='seismic')
 parser.add_argument('-min_dist', default=300)
 parser.add_argument('-gpx', default=False)
-parser.add_argument('-nplaces', default=0)
+#parser.add_argument('-nplaces', default=0)
 parser.add_argument('-topo', default=False)
 
 args = parser.parse_args()
@@ -323,7 +323,7 @@ grid_resolution_meter = float(args.res_m)
 cmap_name = str(args.cmap)
 vmax = float(args.min_dist)
 gpx = args.gpx
-nplaces = int(args.nplaces)
+#nplaces = int(args.nplaces)
 topo = args.topo
 
 # define geographical coordinates of corners of search area

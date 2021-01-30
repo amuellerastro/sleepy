@@ -28,9 +28,6 @@ The available options are:
     -min_dist      The minimum distance from buildings, roads, hunting stands to be considered 
                     acceptable in meter (default=300).
     -gpx           Load a .gpx file. Track will be overplotted. Default: no gpx file is loaded.
-    -nplaces       If >0 then n markers at position of largest distance are placed with popus 
-                    containing a link to google maps satellite images. The zoom level is 
-                    identical to the original folium map zoom level. Default=0.
     -topo          If True (default=False) the elevation of the defined grid of coordinates is queried
                     via an API from a local setup server and data set 
                     (see https://www.opentopodata.org/ for details). Depending on the grid size and resolution
@@ -41,11 +38,12 @@ Output
 ------
 
 The final output is a html file called "{map or area_name}_lon{}_lat{}_radius{}_res_{}_dist{}.html" with the main used 
-parameters in the filename. It shows an interactive map centered around the user
+parameters in the filename. It shows an interactive map centered around the provided
 coordinates. If "area_name" is set this value will appear at the beginning of the file name. Otherwise, the file name start 
-with "map". A contour plot shows for each location inside the user defined area the approximate distance to roads, 
-paths, tracks, and hunting stands. In addition, a map with the identified objects and the provided user coordinates is 
-provided. The file name of this map is identical to the one of the final map but with "_tmp.html" added to the end.
+with "map". On the right-hand side of the map different markers, layers, and contours can be plotted over the map.
+E.g. The contour plot 'Distance' shows for each location inside the user defined area the approximate distance to roads, 
+paths, tracks, and hunting stands. If 'Features' is selected the coordinates of identified features inside the search area 
+are displayed on the map.
 
 ![Example output](https://github.com/amuellerastro/sleepy/blob/main/example.png?raw=true)
 
