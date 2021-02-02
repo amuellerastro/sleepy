@@ -15,21 +15,22 @@ spatial resolution of the search grid. A value for the color map and a minimum d
 as well.
 
 ```
-python sleepy.py -lon <deg> -lat <deg>
+python sleepy.py <lon> <lat>
 ```
 
 The available options are:
 
-    -area_name     Name of the area. Has no influence on the provided coordinates. 
+    --help          Show help meassge.
+    --area_name     Name of the area. Has no influence on the provided coordinates. 
                     This paramter is just added to the file name of the output files.
-    -radius_km     Search radius around the provided coordinates in kilometer (default=0.8).
-    -res_m         The spatial resolution of the search grid in meter (default=100).
-    -cmap          The name of the color map used to plot the contour map (default='gist_gray')
-    -min_dist      The minimum distance from buildings, roads, hunting stands to be considered 
+    --radius_km     Search radius around the provided coordinates in kilometer (default=0.8).
+    --res_m         The spatial resolution of the search grid in meter (default=100).
+    --cmap          The name of the color map used to plot the contour map (default='gist_gray')
+    --min_dist      The minimum distance from buildings, roads, hunting stands to be considered 
                     acceptable in meter (default=300).
-    -gpx           Load a .gpx file. Track will be overplotted. Default: no gpx file is loaded.
-    -topo          If True (default=False) the elevation of the defined grid of coordinates is queried
-                    via an API from a local setup server and data set 
+    --gpx           Load a .gpx file. Track will be overplotted. Default: no gpx file is loaded.
+    --topo          If True (default=False) the elevation of the defined grid of coordinates is queried
+                    via an API from a local server and data set 
                     (see https://www.opentopodata.org/ for details). Depending on the grid size and resolution
                     this query can take up several minutes.
 
@@ -60,3 +61,4 @@ Dependencies
    1. python-argparse
    1. python-gpxpy
    1. python-tqdm
+   1. python-sys

@@ -1,4 +1,41 @@
 #!/usr/bin/env python3
+################################################################################
+##
+## @file sleepy.py
+## @brief query openstreetmap and compute distance from features in a predefined grid.
+## @author Andre Mueller (<amuellerastro@gmail.com>)
+##
+## ### SYNOPSIS
+##
+##     sleepy.py [-h]
+##
+## ### DESCRIPTION
+##
+##      Query openstreetmap through overpass API. Compute distance from features in a predefined grid.
+##      Compute gradient, slope inside the search areaa.
+##
+## ### OPTIONS
+##
+## positional arguments:
+##
+##    coordinates           Longitude, Latitude [deg]
+##
+##  optional arguments:
+##    -h, --help               Show this help message and exit.
+##    --area_name              Name of the area. Has no influence on the provided coordinates. This paramter is just added to the file name of the output files.
+##    --radius_km              Search radius around the provided coordinates in kilometer (default=0.8).
+##    --res_m                  The spatial resolution of the search grid in meter (default=100).
+##    --cmap                   The name of the color map used to plot the contour map (default='seismic')
+##    --min_dist               The minimum distance from buildings, roads, hunting stands to be considered acceptable in meter (default=300).
+##    --gpx                    Load a .gpx file. Track will be overplotted. Default: no gpx file is loaded.
+##    --topo                   If True (default=False) the elevation of the defined grid of coordinates is queried via an API from a local server.
+##
+## ### EXAMPLE
+##
+##  Simple casee:
+##    $> sleepy.py 8.123 50.5
+##
+################################################################################
 # https://towardsdatascience.com/loading-data-from-openstreetmap-with-python-and-the-overpass-api-513882a27fd0
 
 import numpy as np
@@ -14,12 +51,26 @@ import argparse
 import gpxpy
 import gpxpy.gpx
 from tqdm import trange
-
-
+import sys
 # from progress.bar import ChargingBar
 # import pdb; pdb.set_trace()
 # from astropy import units as u
 # from astropy.constants import R_earth
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(description='Query openstreetmap for features around a given location.')
+
+    parser.add_argument('coordinates', type=float, default=[8.5, 48.5], nargs='+', help="Longitude and Latitude in degrees of the area of interest.")
+    parser.add_argument('--area_name', type=str, default=[], help="Name of the area of interest")
+    parser.add_argument('--radius_km', type=float, default=0.8, help="Search radius around the provided coordinates in kilometer.")
+    parser.add_argument('--res_m', type=float, default=100, help="The spatial resolution of the search grid in meter.")
+    parser.add_argument('--cmap', type=str, default='seismic', help="The name of the color map used to plot the contour map")
+    parser.add_argument('--min_dist', type=float, default=300, help="The minimum distance from buildings, roads, hunting stands to be considered acceptable in meter.")
+    parser.add_argument('--gpx', default=False, help="Load a .gpx file. Track will be overplotted.")
+    parser.add_argument('--topo', default=False, help="The elevation of the defined grid of coordinates is queried via an API from a local server.")
+
+    return parser
 
 
 def circular_segment(radius):
@@ -198,7 +249,7 @@ def add_central_marker(tmp_map, lon, lat, radius):
     fg_mark = folium.FeatureGroup(name="Central Marker", show=False)
     tmp_map.add_child(fg_mark)
     folium.Marker(
-        [lat_center, lon_center],
+        [lat, lon],
         popup=popup).add_to(fg_mark)
     return tmp_map
 
@@ -301,76 +352,66 @@ def get_hex_values(cmap_name, levels):
     return hex_values
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-area_name', default='')
-parser.add_argument('-lon', default=8.266133)
-parser.add_argument('-lat', default=48.443269)
-parser.add_argument('-radius_km', default=0.8)
-parser.add_argument('-res_m', default=100)
-parser.add_argument('-cmap', default='seismic')
-parser.add_argument('-min_dist', default=300)
-parser.add_argument('-gpx', default=False)
-#parser.add_argument('-nplaces', default=0)
-parser.add_argument('-topo', default=False)
+def process(args):
+    lon_center = args.coordinates[0]
+    lat_center = args.coordinates[1]
+    search_radius = args.radius_km
 
-args = parser.parse_args()
-area_name = str(args.area_name)
-lon_center = float(args.lon)
-lat_center = float(args.lat)
-coords = [float(args.lon), float(args.lat)]
-search_radius = float(args.radius_km)
-grid_resolution_meter = float(args.res_m)
-cmap_name = str(args.cmap)
-vmax = float(args.min_dist)
-gpx = args.gpx
-#nplaces = int(args.nplaces)
-topo = args.topo
+    # define geographical coordinates of corners of search area
+    search_area = define_search_area(lon_center, lat_center, search_radius)
 
-# define geographical coordinates of corners of search area
-search_area = define_search_area(lon_center, lat_center, search_radius)
+    # query overpass to get coordinates of roads, hunting stands, etc.
+    feature_coordinates = query_overpass(search_area)
 
-# query overpass to get coordinates of roads, hunting stands, etc.
-feature_coordinates = query_overpass(search_area)
+    # define even grid of coordinates inside search area
+    X, Y = define_search_grid(search_area, args.res_m / 1000.0)
+    grid_coordinates = np.vstack((X.flatten(), Y.flatten())).T
+    n_lon, n_lat = X.shape
 
-# define even grid of coordinates inside search area
-X, Y = define_search_grid(search_area, grid_resolution_meter / 1000.0)
-grid_coordinates = np.vstack((X.flatten(), Y.flatten())).T
-n_lon, n_lat = X.shape
+    # compute distance for each grid point from feature coordinates
+    # n_average: average over n computed distances and do not rely on the closest feature
+    Z = compute_distance_from_features(grid_coordinates, feature_coordinates, n_lon, n_lat, n_average=5)
 
-# compute distance for each grid point from feature coordinates
-# n_average: average over n computed distances and do not rely on the closest feature
-Z = compute_distance_from_features(grid_coordinates, feature_coordinates, n_lon, n_lat, n_average=5)
+    # generate basic map
+    base_map = generate_base_map(search_radius, location=[lat_center, lon_center], tiles="OpenStreetMap")
 
-# generate basic map
-base_map = generate_base_map(search_radius, location=[lat_center, lon_center], tiles="OpenStreetMap")
+    # add external websites
+    base_map = add_central_marker(base_map, lon_center, lat_center, search_radius)
 
-# add external websites
-base_map = add_central_marker(base_map, lon_center, lat_center, search_radius)
+    # generate layer of found features
+    base_map = generate_layer_features(base_map, feature_coordinates)
 
-# generate layer of found features
-base_map = generate_layer_features(base_map, feature_coordinates)
+    # generate layer of distance contour plot
+    ul = 300  # everything above 300m is considered to be OK anyway
+    base_map = generate_layer_distance(base_map, X, Y, Z, ll=0, ul=ul)
 
-# generate layer of distance contour plot
-ul = 300  # everything above 300m is considered to be OK anyway
-base_map = generate_layer_distance(base_map, X, Y, Z, ll=0, ul=ul)
+    if args.topo:
+        base_map = generate_layer_gradient_slope(base_map, X, Y, ll=0, ul=20)
 
-if topo:
-    base_map = generate_layer_gradient_slope(base_map, X, Y, ll=0, ul=20)
+    # add coordinates of a gpx file if provided
+    if args.gpx:
+        base_map = add_gpx_track(base_map, args.gpx)
 
-# add coordinates of a gpx file if provided
-if gpx:
-    base_map = add_gpx_track(base_map, gpx)
+    folium.LayerControl(collapsed=False).add_to(base_map)
 
-folium.LayerControl(collapsed=False).add_to(base_map)
+    # Save the map
+    fout_tmp = f'_lon{np.round(lon_center, 5)}_lat{np.round(lat_center, 5)}' \
+               f'_radius{np.round(search_radius, 3)}_res{np.round(args.res_m, 3)}_dist{np.round(ul, 3)}.html'
+    if not args.area_name:
+        fout_name = 'map' + fout_tmp
+    else:
+        fout_name = f'{args.area_name}' + fout_tmp
+    base_map.save(fout_name)
 
-# Save the map
-fout_tmp = f'_lon{np.round(lon_center, 5)}_lat{np.round(lat_center, 5)}' \
-           f'_radius{np.round(search_radius, 3)}_res{np.round(grid_resolution_meter, 3)}_dist{np.round(ul, 3)}.html'
-if not area_name:
-    fout_name = 'map' + fout_tmp
-else:
-    fout_name = f'{area_name}' + fout_tmp
-base_map.save(fout_name)
+
+def main(args):
+    process(args)
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main(create_parser().parse_args())
+
 
 # import pdb; pdb.set_trace()
 ########################################################
