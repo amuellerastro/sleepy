@@ -15,7 +15,7 @@ spatial resolution of the search grid. A value for the color map and a minimum d
 as well.
 
 ```
-python sleepy.py <lon> <lat>
+./sleepy.py <lon> <lat>
 ```
 
 The available options are:
