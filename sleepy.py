@@ -18,7 +18,7 @@
 ##
 ## positional arguments:
 ##
-##    coordinates           Longitude, Latitude [deg]
+##    coordinates           Latitude, Longitude [deg]
 ##
 ##  optional arguments:
 ##    -h, --help               Show this help message and exit.
@@ -66,7 +66,7 @@ import os
 def create_parser():
     parser = argparse.ArgumentParser(description='Query openstreetmap for features around a given location.')
 
-    parser.add_argument('coordinates', type=float, default=[8.5, 48.5], nargs='+', help="Longitude and Latitude in degrees of the area of interest.")
+    parser.add_argument('coordinates', type=float, default=[48.5, 8.5], nargs='+', help="Latitude and  Longitude in degrees of the area of interest.")
     parser.add_argument('--area_name', type=str, default=[], help="Name of the area of interest")
     parser.add_argument('--radius_km', type=float, default=0.8, help="Search radius around the provided coordinates in kilometer.")
     parser.add_argument('--res_m', type=float, default=100, help="The spatial resolution of the search grid in meter.")
@@ -358,8 +358,8 @@ def get_hex_values(cmap_name, levels):
 
 
 def process(args):
-    lon_center = args.coordinates[0]
-    lat_center = args.coordinates[1]
+    lon_center = args.coordinates[1]
+    lat_center = args.coordinates[0]
     search_radius = args.radius_km
 
     # define geographical coordinates of corners of search area
