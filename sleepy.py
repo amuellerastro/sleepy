@@ -37,6 +37,10 @@
 ##
 ################################################################################
 # https://towardsdatascience.com/loading-data-from-openstreetmap-with-python-and-the-overpass-api-513882a27fd0
+# dualmap https://nbviewer.jupyter.org/github/python-visualization/folium/blob/master/examples/Plugins.ipynb#Sub-categories
+# https://github.com/ismyrnow/leaflet-groupedlayercontrol
+
+
 
 import numpy as np
 import matplotlib
@@ -52,6 +56,7 @@ import gpxpy
 import gpxpy.gpx
 from tqdm import trange
 import sys
+import os
 # from progress.bar import ChargingBar
 # import pdb; pdb.set_trace()
 # from astropy import units as u
@@ -395,13 +400,18 @@ def process(args):
     folium.LayerControl(collapsed=False).add_to(base_map)
 
     # Save the map
+    
+    out_dir = 'map'
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    
     fout_tmp = f'_lon{np.round(lon_center, 5)}_lat{np.round(lat_center, 5)}' \
                f'_radius{np.round(search_radius, 3)}_res{np.round(args.res_m, 3)}_dist{np.round(ul, 3)}.html'
     if not args.area_name:
         fout_name = 'map' + fout_tmp
     else:
         fout_name = f'{args.area_name}' + fout_tmp
-    base_map.save(fout_name)
+    base_map.save(out_dir+'/'+fout_name)
 
 
 def main(args):
