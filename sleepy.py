@@ -33,7 +33,7 @@
 ## ### EXAMPLE
 ##
 ##  Simple casee:
-##    $> sleepy.py 8.123 50.5
+##    $> sleepy.py 50.5 8.123
 ##
 ################################################################################
 # https://towardsdatascience.com/loading-data-from-openstreetmap-with-python-and-the-overpass-api-513882a27fd0
