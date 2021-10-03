@@ -39,8 +39,7 @@
 # https://towardsdatascience.com/loading-data-from-openstreetmap-with-python-and-the-overpass-api-513882a27fd0
 # dualmap https://nbviewer.jupyter.org/github/python-visualization/folium/blob/master/examples/Plugins.ipynb#Sub-categories
 # https://github.com/ismyrnow/leaflet-groupedlayercontrol
-
-
+import pdb
 
 import numpy as np
 import matplotlib
@@ -57,6 +56,10 @@ import gpxpy.gpx
 from tqdm import trange
 import sys
 import os
+import json
+import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+from numpy import arctan2,sin,cos,degrees, radians
 # from progress.bar import ChargingBar
 # import pdb; pdb.set_trace()
 # from astropy import units as u
@@ -77,8 +80,35 @@ def create_parser():
 
     return parser
 
+def interpolate_1d_coord(x, y, int_res):
+    samples = int(np.ceil((max(x) - min(x)) / (int_res / 6378.1e3 * 180 / np.pi)))
+    if samples < 4:
+        samples = 4
+    fint = interp1d(x, y, assume_sorted=False)
+    x_int = np.linspace(min(x), max(x), num=samples, endpoint=True)
+    y_int = fint(x_int)
+    return x_int, y_int
+
+
+def get_bearing(lon, lat):
+
+    lon_rad = radians(lon)
+    lat_rad = radians(lat)
+    pa = []
+    for i in range(0, len(lon_rad)):
+        dL = lon_rad[i] - lon_rad[0]
+        X = cos(lat_rad[i]) * sin(dL)
+        Y = cos(lat_rad[0]) * sin(lat_rad[i]) - sin(lat_rad[0]) * cos(lat_rad[i]) * cos(dL)
+        bearing = arctan2(X, Y)
+        print(degrees(bearing))
+        bearing_deg = (degrees(bearing) + 360) % 360
+        pa.append(bearing_deg)
+        print(pa)
+    pdb.set_trace()
+    return pa
 
 def circular_segment(radius):
+
     r_earth = 6378.1  # R_earth.to(u.km).value from astropy.constants
     return np.degrees(radius / r_earth)
 
@@ -115,8 +145,8 @@ def query_overpass(corner_area):
                             params={'data': overpass_query})
 
     data_overpass = response.json()
-    # with open('data.json', 'w') as f:
-    #    json.dump(data_overpass, f, indent=2)
+    with open('data.json', 'w') as f:
+       json.dump(data_overpass, f, indent=2)
 
     coordinates_query = coordinates_from_overpass(data_overpass)
 
@@ -125,14 +155,54 @@ def query_overpass(corner_area):
 
 def coordinates_from_overpass(data):
     # Collect coords into list
-    all_coords = []
+    nodes_all_coords = []
+    nodes_id = []
+    node_lon = []
+    node_lat = []
     for element in data['elements']:
         if element['type'] == 'node':
-            lon = element['lon']
-            lat = element['lat']
-            all_coords.append((lon, lat))
+            nodes_id.append(element['id'])
+            node_lon.append(element['lon'])
+            node_lat.append(element['lat'])
+            #nodes_all_coords.append((lon, lat))
 
-    return all_coords
+    coords = []
+    for element in data['elements']:
+        if element['type'] == 'way':
+            nodes = element['nodes']
+            # print(element['tags'])
+            us_way_lon = []
+            us_way_lat = []
+            for node in nodes:
+                index = nodes_id.index(node)
+                us_way_lon.append(node_lon[index])
+                us_way_lat.append(node_lat[index])
+                coords.append((node_lon[index], node_lat[index]))
+
+            # bearing
+            # bearing = get_bearing(way_lon, way_lat)
+            # print(bearing)
+
+            #number of points used for interpolation, using xx m resolution
+            # int_res = 25
+            #
+            # x, y = interpolate_1d_coord(us_way_lon, us_way_lat, int_res)
+            # for idx in range(0,len(x)):
+            #     coords.append((x[idx], y[idx]))
+            #
+            # u, v = interpolate_1d_coord(us_way_lat, us_way_lon, int_res)
+            # for idx in range(0,len(u)):
+            #     coords.append((v[idx], u[idx]))
+
+            # plt.plot(way_lon, way_lat, 'o', x, y, '+', v, u, '-')
+            # plt.show()
+
+    for idx in range(0, len(node_lon)):
+        coords.append((node_lon[idx], node_lat[idx]))
+
+
+
+    return coords
 
 
 def define_search_grid(corner_area, grid_resolution):
